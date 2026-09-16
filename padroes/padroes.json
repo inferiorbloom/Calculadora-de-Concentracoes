@@ -1,249 +1,6 @@
 [
     {
-        "nome": "Folha de tomate",
-        "elementos": {
-            "Al": {
-                "valor": 598.4,
-                "valor_str": "598.4",
-                "erro": 7.1,
-                "erro_str": "7.1",
-                "unidade": "mg/kg"
-            },
-            "P": {
-                "valor": 2161.0,
-                "valor_str": "2161",
-                "erro": 28.0,
-                "erro_str": "28",
-                "unidade": "mg/kg"
-            },
-            "S": {
-                "valor": 9600.0,
-                "valor_str": "9600",
-                "erro": null,
-                "erro_str": null,
-                "unidade": "mg/kg"
-            },
-            "Cl": {
-                "valor": 6600.0,
-                "valor_str": "6600",
-                "erro": null,
-                "erro_str": null,
-                "unidade": "mg/kg"
-            },
-            "K": {
-                "valor": 26.76,
-                "valor_str": "26.76",
-                "erro": 0.48,
-                "erro_str": "0.48",
-                "unidade": "mg/kg"
-            },
-            "Ca": {
-                "valor": 50.45,
-                "valor_str": "50.45",
-                "erro": 0.55,
-                "erro_str": "0.55",
-                "unidade": "mg/kg"
-            },
-            "Sc": {
-                "valor": 0.1,
-                "valor_str": "0.1",
-                "erro": null,
-                "erro_str": null,
-                "unidade": "mg/kg"
-            },
-            "V": {
-                "valor": 0.835,
-                "valor_str": "0.835",
-                "erro": 0.034,
-                "erro_str": "0.034",
-                "unidade": "mg/kg"
-            },
-            "Cr": {
-                "valor": 1.988,
-                "valor_str": "1.988",
-                "erro": 0.034,
-                "erro_str": "0.034",
-                "unidade": "mg/kg"
-            },
-            "Mn": {
-                "valor": 246.3,
-                "valor_str": "246.3",
-                "erro": 7.1,
-                "erro_str": "7.1",
-                "unidade": "mg/kg"
-            },
-            "Fe": {
-                "valor": 367.5,
-                "valor_str": "367.5",
-                "erro": 4.3,
-                "erro_str": "4.3",
-                "unidade": "mg/kg"
-            },
-            "Co": {
-                "valor": 0.5773,
-                "valor_str": "0.5773",
-                "erro": 0.0071,
-                "erro_str": "0.0071",
-                "unidade": "mg/kg"
-            },
-            "Ni": {
-                "valor": 1.582,
-                "valor_str": "1.582",
-                "erro": 0.041,
-                "erro_str": "0.041",
-                "unidade": "mg/kg"
-            },
-            "Cu": {
-                "valor": 4.7,
-                "valor_str": "4.7",
-                "erro": 0.14,
-                "erro_str": "0.14",
-                "unidade": "mg/kg"
-            },
-            "Zn": {
-                "valor": 30.94,
-                "valor_str": "30.94",
-                "erro": 0.55,
-                "erro_str": "0.55",
-                "unidade": "mg/kg"
-            },
-            "As": {
-                "valor": 0.1126,
-                "valor_str": "0.1126",
-                "erro": 0.0024,
-                "erro_str": "0.0024",
-                "unidade": "mg/kg"
-            },
-            "Se": {
-                "valor": 0.0543,
-                "valor_str": "0.0543",
-                "erro": 0.002,
-                "erro_str": "0.002",
-                "unidade": "mg/kg"
-            },
-            "Br": {
-                "valor": 1300.0,
-                "valor_str": "1300",
-                "erro": null,
-                "erro_str": null,
-                "unidade": "mg/kg"
-            },
-            "Rb": {
-                "valor": 14.83,
-                "valor_str": "14.83",
-                "erro": 0.31,
-                "erro_str": "0.31",
-                "unidade": "mg/kg"
-            },
-            "Sr": {
-                "valor": 85.0,
-                "valor_str": "85",
-                "erro": null,
-                "erro_str": null,
-                "unidade": "mg/kg"
-            },
-            "Mo": {
-                "valor": 0.46,
-                "valor_str": "0.46",
-                "erro": null,
-                "erro_str": null,
-                "unidade": "mg/kg"
-            },
-            "Ag": {
-                "valor": 0.017,
-                "valor_str": "0.017",
-                "erro": null,
-                "erro_str": null,
-                "unidade": "mg/kg"
-            },
-            "Cd": {
-                "valor": 1.517,
-                "valor_str": "1.517",
-                "erro": 0.027,
-                "erro_str": "0.027",
-                "unidade": "mg/kg"
-            },
-            "Sb": {
-                "valor": 0.0619,
-                "valor_str": "0.0619",
-                "erro": 0.0032,
-                "erro_str": "0.0032",
-                "unidade": "mg/kg"
-            },
-            "I": {
-                "valor": 0.85,
-                "valor_str": "0.85",
-                "erro": null,
-                "erro_str": null,
-                "unidade": "mg/kg"
-            },
-            "Cs": {
-                "valor": 0.053,
-                "valor_str": "0.053",
-                "erro": null,
-                "erro_str": null,
-                "unidade": "mg/kg"
-            },
-            "La": {
-                "valor": 2.3,
-                "valor_str": "2.3",
-                "erro": null,
-                "erro_str": null,
-                "unidade": "mg/kg"
-            },
-            "Ce": {
-                "valor": 2.0,
-                "valor_str": "2",
-                "erro": null,
-                "erro_str": null,
-                "unidade": "mg/kg"
-            },
-            "Sm": {
-                "valor": 0.19,
-                "valor_str": "0.19",
-                "erro": null,
-                "erro_str": null,
-                "unidade": "mg/kg"
-            },
-            "Gd": {
-                "valor": 0.17,
-                "valor_str": "0.17",
-                "erro": null,
-                "erro_str": null,
-                "unidade": "mg/kg"
-            },
-            "Hf": {
-                "valor": 0.14,
-                "valor_str": "0.14",
-                "erro": null,
-                "erro_str": null,
-                "unidade": "mg/kg"
-            },
-            "Hg": {
-                "valor": 0.0341,
-                "valor_str": "0.0341",
-                "erro": 0.0015,
-                "erro_str": "0.0015",
-                "unidade": "mg/kg"
-            },
-            "Th": {
-                "valor": 0.12,
-                "valor_str": "0.12",
-                "erro": null,
-                "erro_str": null,
-                "unidade": "mg/kg"
-            },
-            "U": {
-                "valor": 0.035,
-                "valor_str": "0.035",
-                "erro": null,
-                "erro_str": null,
-                "unidade": "mg/kg"
-            }
-        }
-    },
-    {
-        "nome": "Mexilhão",
+        "nome": "a) PS. Mexilhão",
         "elementos": {
             "Al": {
                 "valor": 1190.0,
@@ -467,6 +224,1215 @@
                 "valor_str": "0.143",
                 "erro": 0.039,
                 "erro_str": "0.039",
+                "unidade": "mg/kg"
+            }
+        }
+    },
+    {
+        "nome": "a) PS. Ipê",
+        "elementos": {
+            "P": {
+                "valor": 24.0,
+                "valor_str": "24",
+                "erro": 4.0,
+                "erro_str": "4",
+                "unidade": "mg/kg"
+            },
+            "Cl": {
+                "valor": 41.0,
+                "valor_str": "41",
+                "erro": 3.0,
+                "erro_str": "3",
+                "unidade": "mg/kg"
+            },
+            "K": {
+                "valor": 500.0,
+                "valor_str": "500",
+                "erro": 60.0,
+                "erro_str": "60",
+                "unidade": "mg/kg"
+            },
+            "Ca": {
+                "valor": 950.0,
+                "valor_str": "950",
+                "erro": 110.0,
+                "erro_str": "110",
+                "unidade": "mg/kg"
+            },
+            "Mn": {
+                "valor": 7.4,
+                "valor_str": "7.4",
+                "erro": 0.6,
+                "erro_str": "0.6",
+                "unidade": "mg/kg"
+            }
+        }
+    },
+    {
+        "nome": "a) PS. MAD811",
+        "elementos": {
+            "P": {
+                "valor": 29.0,
+                "valor_str": "29",
+                "erro": 2.0,
+                "erro_str": "2",
+                "unidade": "mg/kg"
+            },
+            "Cl": {
+                "valor": 141.0,
+                "valor_str": "141",
+                "erro": 8.0,
+                "erro_str": "8",
+                "unidade": "mg/kg"
+            },
+            "K": {
+                "valor": 1300.0,
+                "valor_str": "1300",
+                "erro": 80.0,
+                "erro_str": "80",
+                "unidade": "mg/kg"
+            },
+            "Ca": {
+                "valor": 3.56,
+                "valor_str": "3.56",
+                "erro": 0.47,
+                "erro_str": "0.47",
+                "unidade": "mg/kg"
+            },
+            "Sc": {
+                "valor": 0.011,
+                "valor_str": "0.011",
+                "erro": 0.005,
+                "erro_str": "0.005",
+                "unidade": "mg/kg"
+            },
+            "Cr": {
+                "valor": 0.6,
+                "valor_str": "0.60",
+                "erro": 0.02,
+                "erro_str": "0.02",
+                "unidade": "mg/kg"
+            },
+            "Mn": {
+                "valor": 3.6,
+                "valor_str": "3.6",
+                "erro": 0.1,
+                "erro_str": "0.1",
+                "unidade": "mg/kg"
+            },
+            "Fe": {
+                "valor": 106.0,
+                "valor_str": "106",
+                "erro": 5.0,
+                "erro_str": "5",
+                "unidade": "mg/kg"
+            },
+            "Co": {
+                "valor": 0.66,
+                "valor_str": "0.66",
+                "erro": 0.02,
+                "erro_str": "0.02",
+                "unidade": "mg/kg"
+            },
+            "Zn": {
+                "valor": 10.4,
+                "valor_str": "10.4",
+                "erro": 0.4,
+                "erro_str": "0.4",
+                "unidade": "mg/kg"
+            },
+            "Rb": {
+                "valor": 8.67,
+                "valor_str": "8.67",
+                "erro": 0.32,
+                "erro_str": "0.32",
+                "unidade": "mg/kg"
+            },
+            "Ba": {
+                "valor": 122.0,
+                "valor_str": "122",
+                "erro": 2.0,
+                "erro_str": "2",
+                "unidade": "mg/kg"
+            }
+        }
+    },
+    {
+        "nome": "a) PS. Suplemento SA4",
+        "elementos": {
+            "S": {
+                "valor": 3700.0,
+                "valor_str": "3700",
+                "erro": 600.0,
+                "erro_str": "600",
+                "unidade": "mg/kg"
+            },
+            "Ca": {
+                "valor": 43300.0,
+                "valor_str": "43300",
+                "erro": 1400.0,
+                "erro_str": "1400",
+                "unidade": "mg/kg"
+            },
+            "Cr": {
+                "valor": 6.74,
+                "valor_str": "6.74",
+                "erro": 0.29,
+                "erro_str": "0.29",
+                "unidade": "mg/kg"
+            },
+            "Fe": {
+                "valor": 5130.0,
+                "valor_str": "5130",
+                "erro": 430.0,
+                "erro_str": "430",
+                "unidade": "mg/kg"
+            },
+            "Co": {
+                "valor": 0.058,
+                "valor_str": "0.058",
+                "erro": 0.002,
+                "erro_str": "0.002",
+                "unidade": "mg/kg"
+            },
+            "Zn": {
+                "valor": 2.69,
+                "valor_str": "2.69",
+                "erro": 0.17,
+                "erro_str": "0.17",
+                "unidade": "mg/kg"
+            },
+            "Se": {
+                "valor": 0.066,
+                "valor_str": "0.066",
+                "erro": 0.004,
+                "erro_str": "0.004",
+                "unidade": "mg/kg"
+            },
+            "Br": {
+                "valor": 8.27,
+                "valor_str": "8.27",
+                "erro": 0.67,
+                "erro_str": "0.67",
+                "unidade": "mg/kg"
+            }
+        }
+    },
+    {
+        "nome": "b) Montana Soil - 2710",
+        "elementos": {
+            "Al": {
+                "valor": 64400.0,
+                "valor_str": "64400",
+                "erro": 800.0,
+                "erro_str": "800",
+                "unidade": "mg/kg"
+            },
+            "Si": {
+                "valor": 289700.0,
+                "valor_str": "289700",
+                "erro": 1800.0,
+                "erro_str": "1800",
+                "unidade": "mg/kg"
+            },
+            "P": {
+                "valor": 1060.0,
+                "valor_str": "1060",
+                "erro": 150.0,
+                "erro_str": "150",
+                "unidade": "mg/kg"
+            },
+            "S": {
+                "valor": 2400.0,
+                "valor_str": "2400",
+                "erro": 60.0,
+                "erro_str": "60",
+                "unidade": "mg/kg"
+            },
+            "K": {
+                "valor": 21100.0,
+                "valor_str": "21100",
+                "erro": 1100.0,
+                "erro_str": "1100",
+                "unidade": "mg/kg"
+            },
+            "Ca": {
+                "valor": 12500.0,
+                "valor_str": "12500",
+                "erro": 300.0,
+                "erro_str": "300",
+                "unidade": "mg/kg"
+            },
+            "Sc": {
+                "valor": 8.7,
+                "valor_str": "8.7",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Ti": {
+                "valor": 2830.0,
+                "valor_str": "2830",
+                "erro": 100.0,
+                "erro_str": "100",
+                "unidade": "mg/kg"
+            },
+            "V": {
+                "valor": 76.6,
+                "valor_str": "76.6",
+                "erro": 2.3,
+                "erro_str": "2.3",
+                "unidade": "mg/kg"
+            },
+            "Cr": {
+                "valor": 39.0,
+                "valor_str": "39",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Mn": {
+                "valor": 10100.0,
+                "valor_str": "10100",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Fe": {
+                "valor": 33800.0,
+                "valor_str": "33800",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Co": {
+                "valor": 10.0,
+                "valor_str": "10",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Ni": {
+                "valor": 14.3,
+                "valor_str": "14.3",
+                "erro": 1.0,
+                "erro_str": "1",
+                "unidade": "mg/kg"
+            },
+            "Cu": {
+                "valor": 2950.0,
+                "valor_str": "2950",
+                "erro": 130.0,
+                "erro_str": "130",
+                "unidade": "mg/kg"
+            },
+            "Zn": {
+                "valor": 6952.0,
+                "valor_str": "6952",
+                "erro": 91.0,
+                "erro_str": "91",
+                "unidade": "mg/kg"
+            },
+            "Ga": {
+                "valor": 34.0,
+                "valor_str": "34",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "As": {
+                "valor": 626.0,
+                "valor_str": "626",
+                "erro": 38.0,
+                "erro_str": "38",
+                "unidade": "mg/kg"
+            },
+            "Br": {
+                "valor": 6.0,
+                "valor_str": "6",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Rb": {
+                "valor": 120.0,
+                "valor_str": "120",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Sr": {
+                "valor": 330.0,
+                "valor_str": "330",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Y": {
+                "valor": 23.0,
+                "valor_str": "23",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Mo": {
+                "valor": 19.0,
+                "valor_str": "19",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Ag": {
+                "valor": 35.3,
+                "valor_str": "35.3",
+                "erro": 1.5,
+                "erro_str": "1.5",
+                "unidade": "mg/kg"
+            },
+            "Cd": {
+                "valor": 21.8,
+                "valor_str": "21.8",
+                "erro": 0.2,
+                "erro_str": "0.2",
+                "unidade": "mg/kg"
+            },
+            "In": {
+                "valor": 5.1,
+                "valor_str": "5.1",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Sb": {
+                "valor": 38.4,
+                "valor_str": "38.4",
+                "erro": 3.0,
+                "erro_str": "3",
+                "unidade": "mg/kg"
+            },
+            "Ba": {
+                "valor": 707.0,
+                "valor_str": "707",
+                "erro": 51.0,
+                "erro_str": "51",
+                "unidade": "mg/kg"
+            },
+            "La": {
+                "valor": 34.0,
+                "valor_str": "34",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Ce": {
+                "valor": 107.0,
+                "valor_str": "107",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Nd": {
+                "valor": 23.0,
+                "valor_str": "23",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Sm": {
+                "valor": 8.7,
+                "valor_str": "8.7",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Eu": {
+                "valor": 1.0,
+                "valor_str": "1",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Dy": {
+                "valor": 5.4,
+                "valor_str": "5.4",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Ho": {
+                "valor": 0.6,
+                "valor_str": "0.6",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Yb": {
+                "valor": 1.3,
+                "valor_str": "1.3",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Hf": {
+                "valor": 3.2,
+                "valor_str": "3.2",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "W": {
+                "valor": 9.3,
+                "valor_str": "9.3",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Au": {
+                "valor": 0.6,
+                "valor_str": "0.6",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Hg": {
+                "valor": 32.6,
+                "valor_str": "32.6",
+                "erro": 1.8,
+                "erro_str": "1.8",
+                "unidade": "mg/kg"
+            },
+            "Tl": {
+                "valor": 1.3,
+                "valor_str": "1.3",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Pb": {
+                "valor": 5532.0,
+                "valor_str": "5532",
+                "erro": 80.0,
+                "erro_str": "80",
+                "unidade": "mg/kg"
+            },
+            "Th": {
+                "valor": 13.0,
+                "valor_str": "13",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "U": {
+                "valor": 25.0,
+                "valor_str": "25",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            }
+        }
+    },
+    {
+        "nome": "b) Tomato Leaves - 1573a",
+        "elementos": {
+            "Al": {
+                "valor": 598.4,
+                "valor_str": "598.4",
+                "erro": 7.1,
+                "erro_str": "7.1",
+                "unidade": "mg/kg"
+            },
+            "P": {
+                "valor": 2161.0,
+                "valor_str": "2161",
+                "erro": 28.0,
+                "erro_str": "28",
+                "unidade": "mg/kg"
+            },
+            "S": {
+                "valor": 9600.0,
+                "valor_str": "9600",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Cl": {
+                "valor": 6600.0,
+                "valor_str": "6600",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "K": {
+                "valor": 26760.0,
+                "valor_str": "26760",
+                "erro": 480.0,
+                "erro_str": "480",
+                "unidade": "mg/kg"
+            },
+            "Ca": {
+                "valor": 50450.0,
+                "valor_str": "50450",
+                "erro": 550.0,
+                "erro_str": "550",
+                "unidade": "mg/kg"
+            },
+            "Sc": {
+                "valor": 0.1,
+                "valor_str": "0.1",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "V": {
+                "valor": 0.835,
+                "valor_str": "0.835",
+                "erro": 0.034,
+                "erro_str": "0.034",
+                "unidade": "mg/kg"
+            },
+            "Cr": {
+                "valor": 1.988,
+                "valor_str": "1.988",
+                "erro": 0.034,
+                "erro_str": "0.034",
+                "unidade": "mg/kg"
+            },
+            "Mn": {
+                "valor": 246.3,
+                "valor_str": "246.3",
+                "erro": 7.1,
+                "erro_str": "7.1",
+                "unidade": "mg/kg"
+            },
+            "Fe": {
+                "valor": 367.5,
+                "valor_str": "367.5",
+                "erro": 4.3,
+                "erro_str": "4.3",
+                "unidade": "mg/kg"
+            },
+            "Co": {
+                "valor": 0.5773,
+                "valor_str": "0.5773",
+                "erro": 0.0071,
+                "erro_str": "0.0071",
+                "unidade": "mg/kg"
+            },
+            "Ni": {
+                "valor": 1.582,
+                "valor_str": "1.582",
+                "erro": 0.041,
+                "erro_str": "0.041",
+                "unidade": "mg/kg"
+            },
+            "Cu": {
+                "valor": 4.7,
+                "valor_str": "4.7",
+                "erro": 0.14,
+                "erro_str": "0.14",
+                "unidade": "mg/kg"
+            },
+            "Zn": {
+                "valor": 30.94,
+                "valor_str": "30.94",
+                "erro": 0.55,
+                "erro_str": "0.55",
+                "unidade": "mg/kg"
+            },
+            "As": {
+                "valor": 0.1126,
+                "valor_str": "0.1126",
+                "erro": 0.0024,
+                "erro_str": "0.0024",
+                "unidade": "mg/kg"
+            },
+            "Se": {
+                "valor": 0.0543,
+                "valor_str": "0.0543",
+                "erro": 0.002,
+                "erro_str": "0.002",
+                "unidade": "mg/kg"
+            },
+            "Br": {
+                "valor": 1300.0,
+                "valor_str": "1300",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Rb": {
+                "valor": 14.83,
+                "valor_str": "14.83",
+                "erro": 0.31,
+                "erro_str": "0.31",
+                "unidade": "mg/kg"
+            },
+            "Sr": {
+                "valor": 85.0,
+                "valor_str": "85",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Mo": {
+                "valor": 0.46,
+                "valor_str": "0.46",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Ag": {
+                "valor": 0.017,
+                "valor_str": "0.017",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Cd": {
+                "valor": 1.517,
+                "valor_str": "1.517",
+                "erro": 0.027,
+                "erro_str": "0.027",
+                "unidade": "mg/kg"
+            },
+            "Sb": {
+                "valor": 0.0619,
+                "valor_str": "0.0619",
+                "erro": 0.0032,
+                "erro_str": "0.0032",
+                "unidade": "mg/kg"
+            },
+            "I": {
+                "valor": 0.85,
+                "valor_str": "0.85",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Cs": {
+                "valor": 0.053,
+                "valor_str": "0.053",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "La": {
+                "valor": 2.3,
+                "valor_str": "2.3",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Ce": {
+                "valor": 2.0,
+                "valor_str": "2",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Sm": {
+                "valor": 0.19,
+                "valor_str": "0.19",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Gd": {
+                "valor": 0.17,
+                "valor_str": "0.17",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Hf": {
+                "valor": 0.14,
+                "valor_str": "0.14",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Hg": {
+                "valor": 0.0341,
+                "valor_str": "0.0341",
+                "erro": 0.0015,
+                "erro_str": "0.0015",
+                "unidade": "mg/kg"
+            },
+            "Th": {
+                "valor": 0.12,
+                "valor_str": "0.12",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "U": {
+                "valor": 0.035,
+                "valor_str": "0.035",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            }
+        }
+    },
+    {
+        "nome": "b) Buffalo River - 8704",
+        "elementos": {
+            "Al": {
+                "valor": 61.0,
+                "valor_str": "61.0",
+                "erro": 1.8,
+                "erro_str": "1.8",
+                "unidade": "g/kg"
+            },
+            "K": {
+                "valor": 20.01,
+                "valor_str": "20.01",
+                "erro": 0.41,
+                "erro_str": "0.41",
+                "unidade": "g/kg"
+            },
+            "Ca": {
+                "valor": 26.41,
+                "valor_str": "26.41",
+                "erro": 0.83,
+                "erro_str": "0.83",
+                "unidade": "g/kg"
+            },
+            "Sc": {
+                "valor": 11.26,
+                "valor_str": "11.26",
+                "erro": 0.19,
+                "erro_str": "0.19",
+                "unidade": "mg/kg"
+            },
+            "Ti": {
+                "valor": 4.57,
+                "valor_str": "4.57",
+                "erro": 0.2,
+                "erro_str": "0.20",
+                "unidade": "g/kg"
+            },
+            "V": {
+                "valor": 94.6,
+                "valor_str": "94.6",
+                "erro": 4.0,
+                "erro_str": "4.0",
+                "unidade": "mg/kg"
+            },
+            "Cr": {
+                "valor": 121.9,
+                "valor_str": "121.9",
+                "erro": 3.8,
+                "erro_str": "3.8",
+                "unidade": "mg/kg"
+            },
+            "Mn": {
+                "valor": 544.0,
+                "valor_str": "544",
+                "erro": 21.0,
+                "erro_str": "21",
+                "unidade": "mg/kg"
+            },
+            "Fe": {
+                "valor": 39.7,
+                "valor_str": "39.7",
+                "erro": 1.0,
+                "erro_str": "1.0",
+                "unidade": "g/kg"
+            },
+            "Co": {
+                "valor": 13.57,
+                "valor_str": "13.57",
+                "erro": 0.43,
+                "erro_str": "0.43",
+                "unidade": "mg/kg"
+            },
+            "Ni": {
+                "valor": 42.9,
+                "valor_str": "42.9",
+                "erro": 3.7,
+                "erro_str": "3.7",
+                "unidade": "mg/kg"
+            },
+            "Zn": {
+                "valor": 408.0,
+                "valor_str": "408",
+                "erro": 15.0,
+                "erro_str": "15",
+                "unidade": "mg/kg"
+            },
+            "As": {
+                "valor": 17.0,
+                "valor_str": "17",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Sb": {
+                "valor": 3.07,
+                "valor_str": "3.07",
+                "erro": 0.32,
+                "erro_str": "0.32",
+                "unidade": "mg/kg"
+            },
+            "Cs": {
+                "valor": 5.83,
+                "valor_str": "5.83",
+                "erro": 0.12,
+                "erro_str": "0.12",
+                "unidade": "mg/kg"
+            },
+            "Ba": {
+                "valor": 413.0,
+                "valor_str": "413",
+                "erro": 13.0,
+                "erro_str": "13",
+                "unidade": "mg/kg"
+            },
+            "Ce": {
+                "valor": 66.5,
+                "valor_str": "66.5",
+                "erro": 2.0,
+                "erro_str": "2",
+                "unidade": "mg/kg"
+            },
+            "Eu": {
+                "valor": 1.31,
+                "valor_str": "1.31",
+                "erro": 0.038,
+                "erro_str": "0.038",
+                "unidade": "mg/kg"
+            },
+            "Hf": {
+                "valor": 8.4,
+                "valor_str": "8.4",
+                "erro": 1.5,
+                "erro_str": "1.5",
+                "unidade": "mg/kg"
+            },
+            "Pb": {
+                "valor": 150.0,
+                "valor_str": "150",
+                "erro": 17.0,
+                "erro_str": "17",
+                "unidade": "mg/kg"
+            },
+            "Th": {
+                "valor": 9.07,
+                "valor_str": "9.07",
+                "erro": 0.16,
+                "erro_str": "0.16",
+                "unidade": "mg/kg"
+            },
+            "U": {
+                "valor": 3.09,
+                "valor_str": "3.09",
+                "erro": 0.13,
+                "erro_str": "0.13",
+                "unidade": "mg/kg"
+            }
+        }
+    },
+    {
+        "nome": "b) Peach Leaves - 1547",
+        "elementos": {
+            "Al": {
+                "valor": 248.9,
+                "valor_str": "248.9",
+                "erro": 6.5,
+                "erro_str": "6.5",
+                "unidade": "mg/kg"
+            },
+            "P": {
+                "valor": 1371.0,
+                "valor_str": "1371",
+                "erro": 82.0,
+                "erro_str": "82",
+                "unidade": "mg/kg"
+            },
+            "S": {
+                "valor": 2000.0,
+                "valor_str": "2000",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Cl": {
+                "valor": 361.0,
+                "valor_str": "361",
+                "erro": 14.0,
+                "erro_str": "14",
+                "unidade": "mg/kg"
+            },
+            "K": {
+                "valor": 24330.0,
+                "valor_str": "24330",
+                "erro": 380.0,
+                "erro_str": "380",
+                "unidade": "mg/kg"
+            },
+            "Ca": {
+                "valor": 15590.0,
+                "valor_str": "15590",
+                "erro": 160.0,
+                "erro_str": "160",
+                "unidade": "mg/kg"
+            },
+            "Sc": {
+                "valor": 0.04,
+                "valor_str": "0.04",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "V": {
+                "valor": 0.367,
+                "valor_str": "0.367",
+                "erro": 0.038,
+                "erro_str": "0.038",
+                "unidade": "mg/kg"
+            },
+            "Cr": {
+                "valor": 1.0,
+                "valor_str": "1",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Mn": {
+                "valor": 97.8,
+                "valor_str": "97.8",
+                "erro": 1.8,
+                "erro_str": "1.8",
+                "unidade": "mg/kg"
+            },
+            "Fe": {
+                "valor": 219.8,
+                "valor_str": "219.8",
+                "erro": 6.8,
+                "erro_str": "6.8",
+                "unidade": "mg/kg"
+            },
+            "Co": {
+                "valor": 0.07,
+                "valor_str": "0.07",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Ni": {
+                "valor": 0.689,
+                "valor_str": "0.689",
+                "erro": 0.095,
+                "erro_str": "0.095",
+                "unidade": "mg/kg"
+            },
+            "Cu": {
+                "valor": 3.75,
+                "valor_str": "3.75",
+                "erro": 0.37,
+                "erro_str": "0.37",
+                "unidade": "mg/kg"
+            },
+            "Zn": {
+                "valor": 17.97,
+                "valor_str": "17.97",
+                "erro": 0.53,
+                "erro_str": "0.53",
+                "unidade": "mg/kg"
+            },
+            "As": {
+                "valor": 0.062,
+                "valor_str": "0.062",
+                "erro": 0.014,
+                "erro_str": "0.014",
+                "unidade": "mg/kg"
+            },
+            "Se": {
+                "valor": 0.12,
+                "valor_str": "0.120",
+                "erro": 0.017,
+                "erro_str": "0.017",
+                "unidade": "mg/kg"
+            },
+            "Br": {
+                "valor": 11.0,
+                "valor_str": "11",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Rb": {
+                "valor": 19.65,
+                "valor_str": "19.65",
+                "erro": 0.89,
+                "erro_str": "0.89",
+                "unidade": "mg/kg"
+            },
+            "Sr": {
+                "valor": 53.0,
+                "valor_str": "53.0",
+                "erro": 5.0,
+                "erro_str": "5.0",
+                "unidade": "mg/kg"
+            },
+            "Mo": {
+                "valor": 0.0603,
+                "valor_str": "0.0603",
+                "erro": 0.0068,
+                "erro_str": "0.0068",
+                "unidade": "mg/kg"
+            },
+            "Cd": {
+                "valor": 0.0261,
+                "valor_str": "0.0261",
+                "erro": 0.0022,
+                "erro_str": "0.0022",
+                "unidade": "mg/kg"
+            },
+            "Sb": {
+                "valor": 0.02,
+                "valor_str": "0.02",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "I": {
+                "valor": 0.3,
+                "valor_str": "0.3",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Ba": {
+                "valor": 123.7,
+                "valor_str": "123.7",
+                "erro": 5.5,
+                "erro_str": "5.5",
+                "unidade": "mg/kg"
+            },
+            "La": {
+                "valor": 9.0,
+                "valor_str": "9",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Ce": {
+                "valor": 10.0,
+                "valor_str": "10",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Nd": {
+                "valor": 7.0,
+                "valor_str": "7",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Sm": {
+                "valor": 1.0,
+                "valor_str": "1",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Eu": {
+                "valor": 0.17,
+                "valor_str": "0.17",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Gd": {
+                "valor": 1.0,
+                "valor_str": "1",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Tb": {
+                "valor": 0.1,
+                "valor_str": "0.1",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Yb": {
+                "valor": 0.2,
+                "valor_str": "0.2",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "Hg": {
+                "valor": 0.0317,
+                "valor_str": "0.0317",
+                "erro": 0.0043,
+                "erro_str": "0.0043",
+                "unidade": "mg/kg"
+            },
+            "Pb": {
+                "valor": 0.869,
+                "valor_str": "0.869",
+                "erro": 0.018,
+                "erro_str": "0.018",
+                "unidade": "mg/kg"
+            },
+            "Th": {
+                "valor": 0.05,
+                "valor_str": "0.05",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            },
+            "U": {
+                "valor": 0.015,
+                "valor_str": "0.015",
+                "erro": null,
+                "erro_str": null,
+                "unidade": "mg/kg"
+            }
+        }
+    },
+    {
+        "nome": "a) WB 21 - Sangue - Incompleto",
+        "elementos": {
+            "P": {
+                "valor": 0.107,
+                "valor_str": "0.107",
+                "erro": 0.013,
+                "erro_str": "0.013",
+                "unidade": "mg/kg"
+            },
+            "S": {
+                "valor": 0.64,
+                "valor_str": "0.64",
+                "erro": 0.12,
+                "erro_str": "0.12",
+                "unidade": "mg/kg"
+            },
+            "Cl": {
+                "valor": 2.64,
+                "valor_str": "2.64",
+                "erro": 0.2,
+                "erro_str": "0.20",
+                "unidade": "mg/kg"
+            },
+            "K": {
+                "valor": 1.32,
+                "valor_str": "1.32",
+                "erro": 0.23,
+                "erro_str": "0.23",
+                "unidade": "mg/kg"
+            },
+            "Fe": {
+                "valor": 0.473,
+                "valor_str": "0.473",
+                "erro": 0.03,
+                "erro_str": "0.030",
                 "unidade": "mg/kg"
             }
         }

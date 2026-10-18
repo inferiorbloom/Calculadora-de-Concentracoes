@@ -1,5 +1,7 @@
 import os
-from views.concentracaoView import ConcentracaoView, ConcentracaoResultadoView, AttArquivoSelecionado
+import tkinter.messagebox as messagebox
+import customtkinter as ctk
+from views.concentracaoView import ConcentracaoView, ConcentracaoResultadoView, ListaArquivosView
 from models.concentracaoModel import ConcentracaoModel
 from models.propagacaoErrosModel import PropagacaoErrosModel
 from service.fileService import Service
@@ -8,6 +10,8 @@ from viewmodels.exportarVM import ExportarVM
 from viewmodels.padraoVM import PadraoVM
 from viewmodels.graficosVM import GraficosVM
 from viewmodels.limiteDeteccaoVM import LimiteDeteccaoVM
+from models.zscoreModel import ZScoreModel
+from models.sensibilidadeModel import SensibilidadeModel
 
 
 
@@ -15,15 +19,13 @@ class ConcentracaoVM:
     def __init__(self,
                 sidebar_frame,
                 result_frame,
-                arquivo_frame,
-                amostras_frame,
+                arquivos_frame,
                 dynamic_frame,
                 mostrar_tela_inicial):
-        
+
         self.sidebar_frame = sidebar_frame
         self.result_frame = result_frame
-        self.arquivos_frame = arquivo_frame
-        self.amostras_frame = amostras_frame
+        self.arquivos_frame = arquivos_frame
         self.dynamic_frame = dynamic_frame
         self.mostrar_tela_inicial = mostrar_tela_inicial
         self.botoes_criados = False
@@ -45,6 +47,8 @@ class ConcentracaoVM:
 
         # Chama os calculos de concentracao
         self.model = ConcentracaoModel()
+        self.z_score_model = ZScoreModel()
+        self.sensibilidade_model = SensibilidadeModel()
 
         # Chama a view dos botoes de calcular
         self.view = ConcentracaoView(sidebar_frame)
@@ -52,14 +56,13 @@ class ConcentracaoVM:
 
         # Chama o resultado
         self.resultados_view = ConcentracaoResultadoView(self.result_frame)
-        self.resultados_view.pack(padx=20, pady=20, fill="both", expand=True)
+        self.resultados_view.pack(padx=10, pady=10, fill="both", expand=True)
 
-        # Chama o texto dos arquivos
-        self.texto_arquivo_pd = AttArquivoSelecionado(self.arquivos_frame)
-        self.texto_arquivo_pd.pack(fill="x", padx=10, pady=10)
-
-        self.texto_arquivos_am = AttArquivoSelecionado(self.amostras_frame)
-        self.texto_arquivos_am.pack(fill="x", padx=10, pady=10)
+        # Chama a lista de arquivos (marcação de Padrão e Amostras)
+        self.lista_arquivos_view = ListaArquivosView(
+            self.arquivos_frame, ao_alterar=self._atualizar_selecao, ao_escolher_pdf=self.escolher_fullreport
+        )
+        self.lista_arquivos_view.pack(fill="both", expand=True)
 
         # Chama a Exportacao
         self.export = ExportarVM(sidebar_frame, self.variaveis)
@@ -75,35 +78,43 @@ class ConcentracaoVM:
         if not self.botoes_criados:
         # impede recriação de botoes
         # Conectar os botões da View aos métodos da VM
-            self.view.selecionar_arquivo_padrao.configure(command=self.padrao)
-            self.view.selecionar_amostras.configure(command=self.amostras)
+            self.view.selecionar_arquivos.configure(command=self.selecionar_arquivos)
             self.view.calcular.configure(command=self.calcular)
-            self.view.botao_limite.configure(command=self.limite_deteccao.calcula_resultado_limite, state="disabled")
+            self.view.calcular_z_score.configure(command=self.calcular_z_score)
+            self.view.calcular_sensibilidade.configure(command=self.calcular_sensibilidade)
             self.botoes_criados = True
 
-    def padrao(self):
-        arquivo = self.service.selecionar_arquivo_padrao()
-        if arquivo:
-            self.arquivo_padrao = arquivo
-            self._verificar_pronto()
-            # print("Arquivo de padrão selecionado:", self.arquivo_padrao)
-            self.texto_arquivo_pd.atualizar(os.path.basename(self.arquivo_padrao))
-        return self.arquivo_padrao
-
-    def amostras(self):
-        arquivos = list(self.service.selecionar_arquivos_amostras())
+    def selecionar_arquivos(self):
+        arquivos = list(self.service.selecionar_arquivos())
         if arquivos:
-            self.arquivos_amostras = arquivos
-            self._verificar_pronto()
-            # print("Arquivos de amostras selecionadas:", self.arquivos_amostras)
-            nomes_amostras = [os.path.basename(a) + "," for a in arquivos]
-            self.texto_arquivos_am.atualizar(nomes_amostras)
-        return self.arquivos_amostras
+            self.lista_arquivos_view.carregar(arquivos)
+            self._atualizar_selecao()
+        return arquivos
+
+    def _atualizar_selecao(self):
+        """Lê da lista qual arquivo é o padrão e quais são as amostras."""
+        self.arquivo_padrao = self.lista_arquivos_view.arquivo_padrao()
+        self.arquivos_amostras = self.lista_arquivos_view.arquivos_amostras()
+        self._verificar_pronto()
+
+    def escolher_fullreport(self, indice):
+        """Vincula um FullReport (.pdf) ao arquivo da linha clicada na coluna LD."""
+        caminho_pdf = self.service.selecionar_fullReport()
+        if caminho_pdf:
+            self.lista_arquivos_view.definir_pdf(indice, caminho_pdf)
 
     def _verificar_pronto(self):
-        """Habilita o botão Calcular quando tudo estiver selecionado."""
-        if self.arquivos_amostras and self.arquivo_padrao:
-            self.view.calcular.configure(state="normal")
+        """Habilita o botão Calcular só quando houver padrão e amostras marcados."""
+        pronto = bool(self.arquivos_amostras and self.arquivo_padrao)
+        self.view.calcular.configure(state="normal" if pronto else "disabled")
+
+    def calcular_limite_deteccao(self):
+        """Calcula o LD das linhas com PDF vinculado; sem PDFs, limpa o resultado anterior."""
+        fullreports = self.lista_arquivos_view.fullreports_por_arquivo()
+        if not fullreports:
+            self.variaveis.resultado_limite = {}
+            return {}
+        return self.limite_deteccao.calcula_resultado_limite(fullreports)
 
     def calcular(self):
         self.c_padrao = self.padrao_vm.c_padrao_lista_selecionado()
@@ -154,5 +165,56 @@ class ConcentracaoVM:
             self.export.habilita_exporta_excel()
             self.graficos.habilita_graficos()
             self.limite_deteccao.habilita_limite(self.arquivo_padrao, self.c_padrao)
-            self.view.botao_limite.configure(state="normal")
-        return self.resultados_view.mostrar_resultados(self.resultado[0])
+            self.calcular_limite_deteccao()
+            self.view.calcular_z_score.configure(state="normal")
+            self.view.calcular_sensibilidade.configure(state="normal")
+        return self.resultados_view.mostrar_resultados(
+            self.resultado[0],
+            self.variaveis.resultado_limite,
+            self.unidade_padrao,
+            os.path.splitext(os.path.basename(self.arquivo_padrao))[0].strip(),
+            erros=self.erros_concentracao,
+            formatar_resultado=self.arredondamento.formatar_resultado,
+        )
+
+    def calcular_z_score(self):
+        if not hasattr(self, "concentracoes") or not self.c_padrao:
+            return {}
+
+        self.z_score_resultado = self.z_score_model.calcular(
+            self.concentracoes,
+            self.c_padrao,
+            self.erros_concentracao,
+            self.arquivo_padrao,
+        )
+        self.variaveis.z_score_resultado = self.z_score_resultado
+        self.resultados_view.mostrar_z_score(self.z_score_resultado)
+        return self.z_score_resultado
+
+    def calcular_sensibilidade(self):
+        if not hasattr(self, "concentracoes"):
+            return {}
+
+        dialogo = ctk.CTkInputDialog(
+            text="Informe o tempo de contagem (segundos):",
+            title="Tempo de contagem",
+        )
+        tempo = dialogo.get_input()
+        if tempo is None:
+            return {}
+
+        try:
+            resultado = self.sensibilidade_model.calcular(
+                self.concentracoes,
+                self.areas_normalizadas,
+                self.c_padrao,
+                tempo,
+            )
+        except ValueError as erro:
+            messagebox.showerror("Tempo inválido", str(erro))
+            return {}
+
+        self.sensibilidade_resultado = resultado
+        self.variaveis.sensibilidade_resultado = resultado
+        self.resultados_view.mostrar_sensibilidade(resultado)
+        return resultado

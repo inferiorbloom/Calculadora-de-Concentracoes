@@ -10,6 +10,8 @@ from models.arredondamentoModel import ArredondamentoModel
 from models.abaDadosModel import AbaDadosModel
 from models.abaResultadosModel import AbaResultadosModel, montar_titulo_coluna
 from models.abaConcentracoesModel import AbaConcentracoesModel
+from models.abaSLDModel import AbaSLDModel
+from models.abaZScoreModel import AbaZScoreModel
 
 
 class ExportarModel:
@@ -19,6 +21,8 @@ class ExportarModel:
         self.aba_dados = AbaDadosModel()
         self.aba_resultados = AbaResultadosModel()
         self.aba_concentracoes = AbaConcentracoesModel()
+        self.aba_sld = AbaSLDModel()
+        self.aba_zscore = AbaZScoreModel()
 
     def _normalizar_valores_para_excel(self, df):
         """Converte valores que parecem numéricos para tipos numéricos reais antes de gravar no Excel."""
@@ -103,6 +107,8 @@ class ExportarModel:
         unidade_padrao=None,
         arquivo_padrao=None,
         caminho_arquivo=None,
+        sensibilidade_resultado=None,
+        z_score_resultado=None,
     ):
         arquivos = lista_arquivos or []
         concentracoes = concentracoes or {}
@@ -113,6 +119,8 @@ class ExportarModel:
         ld_resultado = ld_resultado or {}
         unidade_padrao = unidade_padrao or {}
         arquivo_padrao = arquivo_padrao or ""
+        sensibilidade_resultado = sensibilidade_resultado or {}
+        z_score_resultado = z_score_resultado or {}
         nome_padrao = os.path.basename(arquivo_padrao).replace(".txt", "")
         #print("[DEBUG] nome_padrao para exportação:", nome_padrao)
         #print("[DEBUG] chaves_ld_resultado:", list(ld_resultado.keys()) if ld_resultado else [])
@@ -128,11 +136,17 @@ class ExportarModel:
 
         # --- Aba "Resultados" ---
         df_analise, elementos_ordenados, contagem_elementos = self.aba_resultados.montar(
-            concentracoes, erros_propagados, unidade_padrao
+            concentracoes, erros_propagados, unidade_padrao, aplicar_arredondamento=False
         )
 
         # --- Aba "Concentrações" ---
         df_concentracoes = self.aba_concentracoes.montar(df_analise)
+        df_sld = self.aba_sld.montar(
+            ld_resultado,
+            sensibilidade_resultado,
+            concentracoes,
+        )
+        df_zscore = self.aba_zscore.montar(z_score_resultado)
 
         #print("\n========== DF_CONCENTRACOES ==========")
         #print(df_concentracoes.to_string())
@@ -150,6 +164,8 @@ class ExportarModel:
             df_dados_excel = self._normalizar_valores_para_excel(df_dados)
             df_concentracoes_excel = self._normalizar_valores_para_excel(df_concentracoes)
             df_analise_excel = self._normalizar_valores_para_excel(df_analise)
+            df_sld_excel = self._normalizar_valores_para_excel(df_sld)
+            df_zscore_excel = self._normalizar_valores_para_excel(df_zscore)
 
             with pd.ExcelWriter(
                 path,
@@ -173,6 +189,20 @@ class ExportarModel:
                     header=False,
                     startrow=2,
                     na_rep="-"
+                )
+
+                df_sld_excel.to_excel(
+                    writer,
+                    sheet_name="SLD",
+                    index=False,
+                    na_rep="-",
+                )
+
+                df_zscore_excel.to_excel(
+                    writer,
+                    sheet_name="Z-Score",
+                    index=False,
+                    na_rep="-",
                 )
 
                 worksheet = writer.sheets["Resultados"]
@@ -210,7 +240,10 @@ class ExportarModel:
                         ld_bruto = self._buscar_ld_para_elemento(ld_resultado, nome_padrao, elemento)
 
                         if ld_bruto not in ["", None]:
-                            ld = self.arredondamento.formatar_ld(ld_bruto, elemento[0] if isinstance(elemento, tuple) else elemento)
+                            try:
+                                ld = float(ld_bruto)
+                            except (TypeError, ValueError):
+                                ld = ld_bruto
 
                     # Linha 1 -> LD
                     worksheet.merge_range(

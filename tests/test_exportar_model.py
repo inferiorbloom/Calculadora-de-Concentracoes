@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from models.exportarModel import ExportarModel
 from models.arredondamentoModel import ArredondamentoModel
+from models.abaResultadosModel import AbaResultadosModel
 
 
 class ExportarModelTests(unittest.TestCase):
@@ -25,6 +26,21 @@ class ExportarModelTests(unittest.TestCase):
         self.assertIsInstance(valor, float)
         self.assertIsInstance(erro, float)
         self.assertEqual(casas, 0)
+
+    def test_montar_resultados_preserva_valores_sem_arredondar(self):
+        model = AbaResultadosModel()
+        valor_calculado = 1.23456789012345
+        erro_calculado = 0.012345678901234
+
+        df, _, _ = model.montar(
+            {"arquivo.txt": {"amostra": {("Fe", 1.0): valor_calculado}}},
+            {"arquivo.txt": {"amostra": {("Fe", 1.0): erro_calculado}}},
+            {},
+            aplicar_arredondamento=False,
+        )
+
+        valores_exportados = df.iloc[0].tolist()
+        self.assertEqual(valores_exportados, [valor_calculado, erro_calculado])
 
 
 if __name__ == "__main__":

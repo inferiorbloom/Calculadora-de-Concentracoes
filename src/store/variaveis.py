@@ -12,6 +12,7 @@ class Variaveis(ctk.CTkFrame):
         self.lista_arquivo_padrao = None
         self.lista_arquivos = []
         self.resultado_limite = []
+        self.sensibilidade_resultado = {}
         self.c_padrao = []
         self.resultados = [None, None]  # armazena os resultados (concentracoes e areas normalizadas)
 

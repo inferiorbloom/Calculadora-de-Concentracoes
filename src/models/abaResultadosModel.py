@@ -23,7 +23,7 @@ class AbaResultadosModel:
     def __init__(self):
         self.arredondamento = ArredondamentoModel()
 
-    def montar(self, concentracoes, erros_propagados, unidade_padrao):
+    def montar(self, concentracoes, erros_propagados, unidade_padrao, aplicar_arredondamento=True):
         """
         Retorna (df_analise, elementos_ordenados, contagem_elementos).
 
@@ -95,7 +95,10 @@ class AbaResultadosModel:
                 erro = elementos.get(elemento, {}).get("Erro", "")
 
                 if valor != "":
-                    valor_final, erro_final, _ = self.arredondamento.formatar_resultado(valor, erro, elemento[0])
+                    if aplicar_arredondamento:
+                        valor_final, erro_final, _ = self.arredondamento.formatar_resultado(valor, erro, elemento[0])
+                    else:
+                        valor_final, erro_final = valor, erro
                     linha[(nome_coluna, c_col)] = float(valor_final)
                     linha[(nome_coluna, e_col)] = float(erro_final)
 

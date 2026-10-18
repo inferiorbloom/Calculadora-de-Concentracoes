@@ -24,9 +24,14 @@ class LimiteDeteccaoVM:
         # self.limitedeteccao_view.botao_limite.configure(state="normal")  # Botão removido da view
         return self.arquivo_padrao, self.c_padrao
 
-    def calcula_resultado_limite(self):
+    def calcula_resultado_limite(self, fullreports_por_arquivo):
+        """fullreports_por_arquivo: {caminho_txt: caminho_pdf}, vindo da lista de arquivos."""
 
-        self.arquivos_fullReport = self.service.selecionar_arquivos_fullReport()
+        # backgrounds indexados pelo .txt, para o vínculo não depender do nome do .pdf
+        self.arquivos_fullReport = {
+            arquivo_txt: self.service.extrair_backgrounds(arquivo_pdf)
+            for arquivo_txt, arquivo_pdf in fullreports_por_arquivo.items()
+        }
 
         concentracoes = self.variaveis.resultados[0]
         areas_normalizadas = self.variaveis.resultados[1]

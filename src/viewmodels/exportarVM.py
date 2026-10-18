@@ -56,6 +56,8 @@ class ExportarVM:
         erros_propagados = getattr(self.variaveis, "erros_concentracao", {}) or {}
         unidade_padrao = getattr(self.variaveis, "unidade_padrao", {}) or {}
         ld_resultado = getattr(self.variaveis, "resultado_limite", {}) or {}
+        sensibilidade_resultado = getattr(self.variaveis, "sensibilidade_resultado", {}) or {}
+        z_score_resultado = getattr(self.variaveis, "z_score_resultado", {}) or {}
 
         c_padrao = getattr(self.variaveis, "c_padrao", None)
         if c_padrao is not None:
@@ -73,5 +75,7 @@ class ExportarVM:
             unidade_padrao,
             arquivo_padrao,
             caminho_arquivo,
+            sensibilidade_resultado,
+            z_score_resultado,
         )
         return self.exporta_excel_var

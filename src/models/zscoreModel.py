@@ -1,5 +1,6 @@
 import math
-import os
+
+from models.leitorArquivoModel import nome_amostra as _nome_arquivo
 
 
 class ZScoreModel:
@@ -14,7 +15,7 @@ class ZScoreModel:
     ):
         """Retorna estatísticas agregadas por elemento das amostras válidas."""
         elementos_padrao = (c_padrao or {}).get("elementos", {})
-        nome_padrao = os.path.splitext(os.path.basename(str(nome_padrao or "")))[0]
+        nome_padrao = _nome_arquivo(nome_padrao or "")
         valores_por_elemento = {}
 
         for nome_bloco, bloco in (concentracoes or {}).items():

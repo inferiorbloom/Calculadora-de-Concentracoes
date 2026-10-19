@@ -2,11 +2,13 @@ import os
 from tkinter import messagebox, ttk
 
 import customtkinter as ctk
+import numpy as np
 from PIL import Image
 from tksheet import Sheet
 
 from models.abaResultadosModel import montar_titulo_coluna
 from models.elementosQuimicos import z_do_elemento
+from models.leitorArquivoModel import nome_amostra as _nome_arquivo
 from resource_utils import resource_path
 
 
@@ -96,15 +98,21 @@ def _para_float(valor):
         return None
 
 
-def _formatar_ld(valor):
-    if valor in (None, ""):
-        return "---"
+def _formatar_numero(valor):
+    """
+    Sem arredondamento por regra (o Excel também sai sem): só limita a 6 algarismos significativos,
+    o que já é mais do que a medida tem. Nunca vira "0.000" por falta de casas.
+    """
     numero = _para_float(valor)
     if numero is None:
         return str(valor)
-    if numero == 0 or abs(numero) >= 0.01:
-        return f"{numero:.3f}"
-    return f"{numero:.2e}"
+    return np.format_float_positional(numero, precision=6, unique=False, fractional=False, trim="-")
+
+
+def _formatar_ld(valor):
+    if valor in (None, ""):
+        return "---"
+    return _formatar_numero(valor)
 
 
 def _ld_referencia(ld_resultado, nome_amostra, elemento, nome_padrao):
@@ -325,13 +333,11 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
 
     # mostrar resultados como planilha
     def mostrar_resultados(
-        self, concentracoes, ld_resultado=None, unidades=None, nome_padrao=None, erros=None, formatar_resultado=None,
-        padrao_certificado=None,
+        self, concentracoes, ld_resultado=None, unidades=None, nome_padrao=None, erros=None, padrao_certificado=None,
     ):
         """
         erros: mesma estrutura de concentracoes, com o erro propagado de cada valor.
         padrao_certificado: {"nome": ..., "elementos": {...}}; mostrado na linha do padrão quando ele não é amostra.
-        formatar_resultado(valor, erro, elemento) -> (valor, erro, casas): o arredondamento da exportação.
         """
         ld_resultado = ld_resultado or {}
         erros = erros or {}
@@ -356,14 +362,13 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
                 amostras.append((nome, elementos, erros_bloco.get(nome, {})))
         nomes_amostras = [nome for nome, _, _ in amostras]
 
-        def texto_celula(valor, erro, simbolo):
-            """'C ± Erro' com o arredondamento da exportação; sem erro, só o valor."""
+        def texto_celula(valor, erro):
+            """'C ± Erro'; sem erro, só o valor."""
             if valor in (None, ""):
                 return "---"
-            if _para_float(erro) is None or formatar_resultado is None:
-                return str(valor) if _para_float(erro) is None else f"{valor}{SEPARADOR_ERRO}{erro}"
-            valor_fmt, erro_fmt, casas = formatar_resultado(valor, erro, simbolo)
-            return f"{float(valor_fmt):.{casas}f}{SEPARADOR_ERRO}{float(erro_fmt):.{casas}f}"
+            if _para_float(erro) is None:
+                return _formatar_numero(valor)
+            return f"{_formatar_numero(valor)}{SEPARADOR_ERRO}{_formatar_numero(erro)}"
 
         # 1ª linha: só o LD do padrão usado nesta aba
         linhas = []
@@ -393,7 +398,7 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
             celulas = [rotulo_padrao if nome_amostra == nome_padrao else nome_amostra]
 
             for coluna, (chave, simbolo) in enumerate(zip(todos_elementos, simbolos), start=1):
-                texto = texto_celula(elementos.get(chave), erros_amostra.get(chave), simbolo)
+                texto = texto_celula(elementos.get(chave), erros_amostra.get(chave))
                 valor = _para_float(elementos.get(chave))
                 erro = _para_float(erros_amostra.get(chave))
                 ld = _ld_referencia(ld_resultado, nome_amostra, simbolo, nome_padrao)
@@ -512,9 +517,8 @@ class ResultadosPadroesView(ctk.CTkFrame):
                 r.concentracoes,
                 r.resultado_limite,
                 r.unidade_padrao,
-                os.path.splitext(os.path.basename(r.arquivo_padrao))[0].strip(),
+                _nome_arquivo(r.arquivo_padrao),
                 erros=r.erros_concentracao,
-                formatar_resultado=r.arredondamento.formatar_resultado,
                 padrao_certificado=r.c_padrao,
             )
 
@@ -557,11 +561,20 @@ class ListaArquivosView(ctk.CTkScrollableFrame):
         self.botoes_pdf = {}
         self.combos_padrao = {}
 
+    def _voltar_ao_topo(self):
+        """
+        Com uma lista menor que a anterior, a rolagem ficava parada lá embaixo; como a lista nova
+        cabe na tela, o CTkScrollableFrame desliga a rolagem e não dava mais para subir.
+        """
+        self.update_idletasks()
+        self._parent_canvas.yview_moveto(0)
+
     def mostrar_vazio(self):
         self.limpar()
         ctk.CTkLabel(
             self, text="Nenhum arquivo selecionado. Use \"Selecionar Arquivos\" no Menu.", font=("Arial", 14)
         ).grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky="w")
+        self._voltar_ao_topo()
 
     def carregar(self, caminhos):
         self.limpar()
@@ -622,6 +635,8 @@ class ListaArquivosView(ctk.CTkScrollableFrame):
             self.botoes_pdf[indice] = (botao_pdf, botao_remover)
             self.linhas.append((caminho, var_padrao, var_amostra))
             self.definir_pdf(indice, None, notificar=False)
+
+        self._voltar_ao_topo()
 
     def _escolher_pdf(self, indice):
         if self.ao_escolher_pdf:

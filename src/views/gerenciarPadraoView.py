@@ -189,7 +189,8 @@ class Gerenciar_PadraoView(ctk.CTkFrame):
             unidade = ctk.CTkComboBox(
                 self.scroll,
                 values=["mg/kg","g/kg"],
-                width=80
+                width=80,
+                state="readonly",  # só unidades que a Sensibilidade e os gráficos sabem converter
             )
             unidade.set("mg/kg")
             unidade.grid(row=row, column=3)
@@ -386,63 +387,69 @@ class Gerenciar_PadraoView(ctk.CTkFrame):
     # SALVAR JSON
     # -------------------------
 
+    @staticmethod
+    def _ler_numero(texto, elemento, campo):
+        """Aceita vírgula ou ponto decimal; devolve (número, texto normalizado com ponto)."""
+        texto = (texto or "").strip().replace(",", ".")
+        if not texto:
+            return None, None
+        try:
+            numero = float(texto)
+        except ValueError:
+            raise ValueError(f"{elemento}: o {campo} \"{texto}\" não é um número.") from None
+        if numero < 0:
+            raise ValueError(f"{elemento}: o {campo} não pode ser negativo.")
+        return numero, texto
+
     def salvar_padroes(self):
+        nome = self.padrao_selecionado or self.entry_nome.get().strip()
+        novo_nome = self.entry_nome.get().strip() or nome
+        if not novo_nome:
+            messagebox.showerror("Erro", "Dê um nome ao padrão antes de salvar.")
+            return
+        if novo_nome != nome and any(p["nome"] == novo_nome for p in self.padroes):
+            messagebox.showerror("Erro", f"Já existe um padrão chamado \"{novo_nome}\".")
+            return
+
+        # valida tudo antes de gravar, para não salvar um padrão pela metade
+        dados_elementos = {}
+        try:
+            for elemento, campos in self.entries.items():
+                valor, valor_str = self._ler_numero(campos["valor"].get(), elemento, "valor")
+                if valor is None:
+                    continue
+                erro, erro_str = self._ler_numero(campos["erro"].get(), elemento, "erro")
+                dados_elementos[elemento] = {
+                    "valor": valor,
+                    "valor_str": valor_str,
+                    "erro": erro,
+                    "erro_str": erro_str,
+                    "unidade": campos["unidade"].get(),
+                }
+        except ValueError as e:
+            messagebox.showerror("Erro", f"Não foi possível salvar:\n{e}")
+            return
+
+        padrao = {"nome": novo_nome, "elementos": dados_elementos}
+        existentes = [p for p in self.padroes if p["nome"] != nome]
+        existentes.append(padrao)
 
         try:
-
-            nome = self.padrao_selecionado or self.entry_nome.get().strip()
-            novo_nome = self.entry_nome.get().strip()
-
-            dados_elementos = {}
-
-            for elemento, campos in self.entries.items():
-
-                valor = campos["valor"].get()
-
-                if valor != "":
-
-                    erro = campos["erro"].get()
-                    unidade = campos["unidade"].get()
-
-                    dados_elementos[elemento] = {
-                        "valor": float(valor) if valor not in ("", None) else None,
-                        "valor_str": valor if valor not in ("", None) else None,
-                        "erro": float(erro) if erro not in ["", None] else None,
-                        "erro_str": erro if erro not in ["", None] else None,
-                        "unidade": unidade
-                    }
-
-            padrao = {
-                "nome": novo_nome if novo_nome else nome,
-                "elementos": dados_elementos
-            }
-
-            existentes = [p for p in self.padroes if p["nome"] != nome]
-            existentes.append(padrao)
-
             with open(self.caminho_json, "w", encoding="utf-8") as f:
                 json.dump(existentes, f, indent=4, ensure_ascii=False)
+        except OSError as e:
+            messagebox.showerror("Erro", f"Falha ao gravar o arquivo de padrões:\n{e}")
+            return
 
-            self.variaveis.padroes = existentes.copy()
-            self.padroes = existentes
-
-            self.atualizar_lista_json()
-
-            if self.combo_principal:
-                self.combo_principal.atualizar_lista(existentes)
-
-            messagebox.showinfo("Sucesso", "Padrões atualizados!")
-
-        except Exception as e:
-
-            messagebox.showerror(
-                "Erro",
-                f"Falha ao salvar:\n{e}"
-            )
-
-        nomes = [p["nome"] for p in existentes]
+        self.variaveis.padroes = existentes.copy()
+        self.padroes = existentes
         self.padrao_selecionado = padrao["nome"]
         self.atualizar_lista_json()
+
+        if self.combo_principal:
+            self.combo_principal.atualizar_lista(existentes)
+
+        messagebox.showinfo("Sucesso", "Padrões atualizados!")
 
     def atualizar_lista_json(self):
 

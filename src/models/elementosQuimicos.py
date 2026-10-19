@@ -5,6 +5,7 @@ disponibilizada no sentido inverso (símbolo -> Z) para ordenação.
 """
 
 ELEMENTOS = {
+    11: "Na",
     12: "Mg",
     13: "Al",
     14: "Si",

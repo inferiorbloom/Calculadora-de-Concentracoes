@@ -1,223 +1,102 @@
-import os
-import math
+from models.leitorArquivoModel import ler_picos, nome_amostra
 
 
 class ConcentracaoModel:
-    # Função para calcular as concentrações
-    def calcular_concentracoes(self,
-                               lista_arquivos,
-                               lista_arquivo_padrao,
-                               c_padrao):
+    def __init__(self):
+        # situações que não impedem o cálculo, mas que o usuário precisa saber (mostradas pelo VM)
+        self.avisos = []
 
-        #print(resultado_limite)
+    def _avisar(self, texto):
+        if texto not in self.avisos:
+            self.avisos.append(texto)
+
+    @staticmethod
+    def _area_ar(picos):
+        for pico in picos:
+            if pico.elemento == "Ar":
+                return pico.area
+        return None
+
+    # Função para calcular as concentrações
+    def calcular_concentracoes(self, lista_arquivos, lista_arquivo_padrao, c_padrao):
+        """
+        Retorna [concentracoes, areas_normalizadas, fatores_normalizacao, erros_normalizados, area_padrao, erro_padrao].
+        Lança ArquivoInvalidoError se algum .txt não puder ser lido.
+        """
+        self.avisos = []
 
         if not lista_arquivo_padrao or not lista_arquivos:
-            print("Nenhum arquivo ou padrão selecionado.")
             return {}
 
         c_padrao = c_padrao["elementos"]
-
-
-        # Dicionário dos elementos químicos
-        elementos = {
-            12: "Mg",
-            13: "Al",
-            14: "Si",
-            15: "P",
-            16: "S",
-            17: "Cl",
-            18: "Ar",
-            19: "K",
-            20: "Ca",
-            21: "Sc",
-            22: "Ti",
-            23: "V",
-            24: "Cr",
-            25: "Mn",
-            26: "Fe",
-            27: "Co",
-            28: "Ni",
-            29: "Cu",
-            30: "Zn",
-            31: "Ga",
-            32: "Ge",
-            33: "As",
-            34: "Se",
-            35: "Br",
-            36: "Kr",
-            37: "Rb",
-            38: "Sr",
-            39: "Y",
-            40: "Zr",
-            41: "Nb",
-            42: "Mo",
-            43: "Tc",
-            44: "Ru",
-            45: "Rh",
-            46: "Pd",
-            47: "Ag",
-            48: "Cd",
-            49: "In",
-            50: "Sn",
-            51: "Sb",
-            52: "Te",
-            53: "I",
-            54: "Xe",
-            55: "Cs",
-            56: "Ba",
-            57: "La",
-            58: "Ce",
-            59: "Pr",
-            60: "Nd",
-            61: "Pm",
-            62: "Sm",
-            63: "Eu",
-            64: "Gd",
-            65: "Tb",
-            66: "Dy",
-            67: "Ho",
-            68: "Er",
-            69: "Tm",
-            70: "Yb",
-            71: "Lu",
-            72: "Hf",
-            73: "Ta",
-            74: "W",
-            75: "Re",
-            76: "Os",
-            77: "Ir",
-            78: "Pt",
-            79: "Au",
-            80: "Hg",
-            81: "Tl",
-            82: "Pb",
-            83: "Bi",
-            84: "Po",
-            85: "At",
-            86: "Rn",
-            87: "Fr",
-            88: "Ra",
-            89: "Ac",
-            90: "Th",
-            91: "Pa",
-            92: "U",
-            93: "Np",
-            94: "Pu",
-        }
-
-        # documentos é um dicionario que armazena dicionarios, isto é: Documentos[0] = "documento1": bloco de notas
-        documentos = {}
-        concentracoes = {}  # dicionário onde serão armazenados as concentrações
-
-        for i, arquivo in enumerate(lista_arquivos, start=1):
-            # armazena caminho no dicionário documentos
-            documentos[f"documento{i}"] = {"caminho": arquivo}
-
-            # extrai nome da amostra para usar no dicionário de concentrações
-            nome_amostra = os.path.splitext(os.path.basename(arquivo))[0]
-            nome_amostra = nome_amostra.strip()  # remove espaços em branco
-            concentracoes[f"concentracao{i}"] = {nome_amostra: {}}
-
-        # aqui, ele pega o conteudo que vai ser o documento de texto pulando as 5 linhas iniciais e o lê linha por linha, tirando espaços e formatando, basicamente
-        for doc in documentos.values():  # doc é o dicionário interno
-            with open(doc["caminho"], "r", encoding="utf-8") as f:
-                conteudo = f.readlines()[5:]
-            # Cada linha vira uma lista de floats
-            doc["linhas"] = [[float(x.strip()) for x in linha.split(",")] for linha in conteudo]
-
-        area_padrao = {}
-        erro_padrao = {}
+        nome_padrao = nome_amostra(lista_arquivo_padrao)
 
         # Lê área do padrão
+        area_padrao = {}
+        erro_padrao = {}
+        picos_padrao = ler_picos(lista_arquivo_padrao)
+        for pico in picos_padrao:
+            if pico.elemento is None:
+                continue
+            area_padrao[pico.chave] = pico.area
+            erro_padrao[pico.chave] = pico.erro
 
-        with open(lista_arquivo_padrao, "r", encoding="utf-8") as p:
-            for line in p:
-                line = line.strip()
-                if line and line[0].isdigit():
-                    valores = [v.strip() for v in line.split(",")]
-                    try:
-                        z = int(valores[0])
-                        area = float(valores[2])
-                        erro = float(valores[3])
-                        elemento = elementos.get(z, "-")
-                        energia = round(float(valores[1]), 3)
-                        chave = (elemento, energia)
-                        area_padrao[chave] = area
-                        erro_padrao[chave] = erro
-                    except (ValueError, IndexError):
-                        continue
-
-        # _____________________________________________________________________________________________________________________________________________________________________________________
+        # _____________________________________________________________________________________________________________
         # Normalização e cálculo
-        area_ar_padrao = None
+        area_ar_padrao = self._area_ar(picos_padrao)
+        if not area_ar_padrao:
+            self._avisar(
+                f"O padrão {nome_padrao} não tem pico de Ar (ou a área é zero): "
+                "as concentrações foram calculadas SEM normalização."
+            )
 
-        for (elemento, energia), area in area_padrao.items():
-            if elemento == "Ar":
-                area_ar_padrao = area
-                break
-        #print("Área de Ar no padrão:", area_ar_padrao)
-        # dicionario para guardar os fatores de normalização
+        concentracoes = {}  # {"concentracao1": {amostra: {(elemento, energia): concentração}}}
         fatores_normalizacao = {}
         areas_normalizadas = {}
         erros_normalizados = {}
-        
 
-        # calcula o fator para cada amostra (baseado no ar)
-        for i, (doc_nome, info) in enumerate(documentos.items(), start=1):
-            nome_amostra = list(concentracoes[f"concentracao{i}"].keys())[0]
+        for i, arquivo in enumerate(lista_arquivos, start=1):
+            nome = nome_amostra(arquivo)
+            picos = ler_picos(arquivo)
+            concentracoes[f"concentracao{i}"] = {nome: {}}
 
-            # Encontra a área de Ar (18) na amostra
-            area_ar_amostra = None
-            for linha in info["linhas"]:
-                if linha[0] == 18:  # número atômico do Ar
-                    area_ar_amostra = linha[2]  # área líquida medida para Ar
-                    break
-
+            # fator de normalização da amostra (baseado no Ar)
+            area_ar_amostra = self._area_ar(picos)
             if area_ar_amostra and area_ar_padrao:
-                fatores_normalizacao[nome_amostra] = area_ar_padrao / area_ar_amostra
+                fatores_normalizacao[nome] = area_ar_padrao / area_ar_amostra
+            elif area_ar_padrao:
+                self._avisar(f"{nome} não tem pico de Ar (ou a área é zero): calculada SEM normalização.")
+            fator = fatores_normalizacao.get(nome, 1)  # usa 1 se não houver fator (sem normalização)
 
-        # import dos dados + cálculo
-        for i, (doc_nome, info) in enumerate(documentos.items(), start=1):
-            nome_amostra = list(concentracoes[f"concentracao{i}"].keys())[0]
-            fator = fatores_normalizacao.get(nome_amostra, 1)  # usa 1 se não houver fator (sem normalização)
-            areas_normalizadas[nome_amostra] = {}
-            erros_normalizados[nome_amostra] = {}
+            areas_normalizadas[nome] = {}
+            erros_normalizados[nome] = {}
 
-            for linha in info["linhas"]:
-                num = linha[0]  # número do elemento
-                area_net = linha[2]  # área líquida medida
-                erro_area = linha[3]  # erro da área medida
-                elemento = elementos[num]
-                energia = round(float(linha[1]), 3)
-                chave = (elemento, energia)
+            for pico in picos:
+                if pico.elemento is None:
+                    self._avisar(f"{nome}: elemento com Z = {pico.z} não reconhecido; o pico foi ignorado.")
+                    continue
+                chave = pico.chave
 
                 # aplica normalização na área antes do cálculo
-                area_net_normalizada = area_net * fator
-                erro_normalizado = erro_area * fator
-                areas_normalizadas[nome_amostra][chave] = area_net_normalizada
-                erros_normalizados[nome_amostra][chave] = round(erro_normalizado, 0)
-
-            
-               
-
+                area_net_normalizada = pico.area * fator
+                areas_normalizadas[nome][chave] = area_net_normalizada
+                erros_normalizados[nome][chave] = round(pico.erro * fator, 0)
 
                 # Calcula concentração apenas se o elemento estiver nos padrões
-                if elemento in c_padrao and chave in area_padrao:
+                if pico.elemento not in c_padrao or chave not in area_padrao:
+                    continue
 
-                    valor_padrao = c_padrao[elemento]["valor"]
+                valor_padrao = c_padrao[pico.elemento].get("valor")
+                if valor_padrao in (None, ""):
+                    continue
+                if not area_padrao[chave] or area_padrao[chave] <= 0:
+                    self._avisar(
+                        f"No padrão {nome_padrao}, {pico.elemento} ({pico.energia:.3f} keV) tem área "
+                        f"{area_padrao[chave]:g}: esse elemento ficou sem concentração."
+                    )
+                    continue
 
-                    conc = (area_net_normalizada * valor_padrao) / area_padrao[chave]
-                    conc = f"{conc:.3f}"
+                conc = (area_net_normalizada * float(valor_padrao)) / area_padrao[chave]
+                concentracoes[f"concentracao{i}"][nome][chave] = conc
 
-                    concentracoes[f"concentracao{i}"][nome_amostra][chave] = conc
-
-        #print("Concentrações calculadas:", concentracoes)
-        #print("Áreas normalizadas:", areas_normalizadas)
-        #print("Erros normalizados:", erros_normalizados)
-        #print("área de normalização com chave:", area_padrao[chave])
-        #print("print no concentracaoModel")
-        #print("Erros dos padrões:", area_padrao, "------",erro_padrao)
-        #print("Fatores:", fatores_normalizacao)
         return [concentracoes, areas_normalizadas, fatores_normalizacao, erros_normalizados, area_padrao, erro_padrao]
-
-

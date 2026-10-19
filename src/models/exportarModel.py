@@ -10,6 +10,7 @@ from models.abaResultadosModel import AbaResultadosModel, montar_titulo_coluna
 from models.abaConcentracoesModel import AbaConcentracoesModel
 from models.abaSLDModel import AbaSLDModel
 from models.abaZScoreModel import AbaZScoreModel
+from models.leitorArquivoModel import nome_amostra
 
 
 class ExportarModel:
@@ -71,7 +72,7 @@ class ExportarModel:
         if not ld_resultado or not isinstance(ld_resultado, dict):
             return None
 
-        nome_padrao_normalizado = os.path.basename(str(nome_padrao or "")).replace(".txt", "")
+        nome_padrao_normalizado = nome_amostra(nome_padrao or "")
 
         #print(f"\nBuscando {elemento}")
         #print("nome_padrao =", nome_padrao_normalizado)
@@ -261,7 +262,7 @@ class ExportarModel:
 
         ld_resultado = resultado_padrao.resultado_limite or {}
         unidade_padrao = resultado_padrao.unidade_padrao or {}
-        nome_padrao = os.path.basename(resultado_padrao.arquivo_padrao or "").replace(".txt", "")
+        nome_padrao = nome_amostra(resultado_padrao.arquivo_padrao or "")
 
         if "Concentrações" in abas:
             dfs["Concentrações"].to_excel(
@@ -286,7 +287,7 @@ class ExportarModel:
             # (mesmo startrow das amostras, deslocado pelo número de amostras)
             df_estatisticas = self.aba_resultados.montar_estatisticas(
                 dfs["Resultados"],
-                os.path.splitext(os.path.basename(resultado_padrao.arquivo_padrao or ""))[0].strip(),
+                nome_padrao,
             )
             if not df_estatisticas.empty:
                 df_estatisticas.to_excel(

@@ -1,3 +1,6 @@
+import os
+
+from models.leitorArquivoModel import ArquivoInvalidoError
 from models.limitedeteccaoModel import LimiteDeteccaoModel
 from views.limiteDeteccaoView import LimiteDeteccaoView
 
@@ -17,10 +20,15 @@ class LimiteDeteccaoVM:
         Retorna os backgrounds indexados pelo .txt, para o vínculo não depender do nome do .pdf.
         Os backgrounds não dependem do padrão, então são lidos uma vez só e reaproveitados.
         """
-        return {
-            arquivo_txt: self.service.extrair_backgrounds(arquivo_pdf)
-            for arquivo_txt, arquivo_pdf in fullreports_por_arquivo.items()
-        }
+        backgrounds = {}
+        for arquivo_txt, arquivo_pdf in fullreports_por_arquivo.items():
+            try:
+                backgrounds[arquivo_txt] = self.service.extrair_backgrounds(arquivo_pdf)
+            except Exception as erro:
+                raise ArquivoInvalidoError(
+                    f"Não foi possível ler o FullReport {os.path.basename(arquivo_pdf)}:\n{erro}"
+                ) from erro
+        return backgrounds
 
     def calcula_resultado_limite(self, backgrounds, resultado_padrao):
         """Calcula o LD com os dados de UM padrão (ResultadoPadrao) e guarda nele."""

@@ -17,9 +17,9 @@ class SensibilidadeModel:
     def calcular(self, concentracoes, areas_normalizadas, c_padrao, tempo_contagem):
         """Retorna amostra -> (elemento, energia) -> sensibilidade."""
         try:
-            tempo = float(tempo_contagem)
+            tempo = float(str(tempo_contagem).strip().replace(",", "."))  # aceita "100,5"
         except (TypeError, ValueError):
-            raise ValueError("O tempo de contagem deve ser numérico.")
+            raise ValueError(f"O tempo de contagem \"{tempo_contagem}\" não é um número (ex.: 100 ou 100,5).")
 
         if tempo <= 0:
             raise ValueError("O tempo de contagem deve ser maior que zero.")

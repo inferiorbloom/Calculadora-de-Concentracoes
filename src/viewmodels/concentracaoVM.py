@@ -5,6 +5,8 @@ from views.concentracaoView import ConcentracaoView, ResultadosPadroesView, List
 from models.concentracaoModel import ConcentracaoModel
 from models.propagacaoErrosModel import PropagacaoErrosModel
 from models.resultadoPadraoModel import ResultadoPadrao
+from models.leitorArquivoModel import ArquivoInvalidoError, nome_amostra
+from service.logErros import mensagem_erro_inesperado
 from service.fileService import Service
 from store.variaveis import Variaveis
 from viewmodels.exportarVM import ExportarVM
@@ -88,10 +90,33 @@ class ConcentracaoVM:
 
     def selecionar_arquivos(self):
         arquivos = list(self.service.selecionar_arquivos())
-        if arquivos:
+        if arquivos and not self._nomes_repetidos(arquivos):
             self.lista_arquivos_view.carregar(arquivos)
             self._atualizar_selecao()
         return arquivos
+
+    @staticmethod
+    def _nomes_repetidos(arquivos):
+        """
+        Cada arquivo é identificado pelo nome (sem a pasta) em todo o programa. Dois arquivos com o
+        mesmo nome misturariam áreas, erros e LD, então a seleção é recusada com uma explicação.
+        """
+        por_nome = {}
+        for caminho in arquivos:
+            por_nome.setdefault(nome_amostra(caminho), []).append(caminho)
+        repetidos = {nome: caminhos for nome, caminhos in por_nome.items() if len(caminhos) > 1}
+        if not repetidos:
+            return False
+
+        detalhes = "\n\n".join(
+            f"{nome}:\n" + "\n".join(f"  • {c}" for c in caminhos) for nome, caminhos in repetidos.items()
+        )
+        messagebox.showerror(
+            "Arquivos com o mesmo nome",
+            "Há arquivos diferentes com o mesmo nome. Os resultados de um sobrescreveriam os do outro.\n\n"
+            f"{detalhes}\n\nRenomeie um deles (ex.: acrescente a data) e selecione de novo.",
+        )
+        return True
 
     def _atualizar_selecao(self):
         """Lê da lista quais arquivos são padrões (com o padrão certificado de cada um) e quais são amostras."""
@@ -102,8 +127,18 @@ class ConcentracaoVM:
     def escolher_fullreport(self, indice):
         """Vincula um FullReport (.pdf) ao arquivo da linha clicada na coluna LD."""
         caminho_pdf = self.service.selecionar_fullReport()
-        if caminho_pdf:
-            self.lista_arquivos_view.definir_pdf(indice, caminho_pdf)
+        if not caminho_pdf:
+            return
+        caminho_txt = self.lista_arquivos_view.linhas[indice][0]
+        if nome_amostra(caminho_pdf) != nome_amostra(caminho_txt):
+            vincular = messagebox.askyesno(
+                "Conferir FullReport",
+                f"O PDF \"{os.path.basename(caminho_pdf)}\" não tem o mesmo nome do arquivo "
+                f"\"{os.path.basename(caminho_txt)}\".\n\nVincular mesmo assim?",
+            )
+            if not vincular:
+                return
+        self.lista_arquivos_view.definir_pdf(indice, caminho_pdf)
 
     def _verificar_pronto(self):
         """Habilita o Calcular só com amostras e pelo menos um padrão, todos com padrão certificado escolhido."""
@@ -117,7 +152,7 @@ class ConcentracaoVM:
     @staticmethod
     def _nome_unico(caminho, usados):
         """Nome do arquivo sem extensão; se já existir (mesmo nome em pastas diferentes), ganha um sufixo."""
-        base = os.path.splitext(os.path.basename(caminho))[0].strip()
+        base = nome_amostra(caminho)
         nome, n = base, 2
         while nome in usados:
             nome, n = f"{base} ({n})", n + 1
@@ -141,18 +176,24 @@ class ConcentracaoVM:
             resultado_padrao.erro_padrao,
         )
 
-        # arredondamento próprio: as casas decimais dependem do padrão certificado
-        resultado_padrao.arredondamento.atualizar_casas_padrao(c_padrao)
-
         # LD: só das linhas com PDF vinculado
         if backgrounds:
             self.limite_deteccao.calcula_resultado_limite(backgrounds, resultado_padrao)
 
         return resultado_padrao
 
-    def calcular(self):
+    def _calcular_todos(self):
+        """Lê os arquivos e calcula com cada padrão. Devolve (resultados_por_padrao, avisos)."""
+        avisos = []
         fullreports = self.lista_arquivos_view.fullreports_por_arquivo()
         backgrounds = self.limite_deteccao.extrair_backgrounds(fullreports) if fullreports else {}
+        for caminho_txt, bg in backgrounds.items():
+            if not bg:
+                avisos.append(
+                    f"Nenhum background encontrado em {os.path.basename(fullreports[caminho_txt])}: "
+                    f"{nome_amostra(caminho_txt)} ficou sem LD. O PDF é um FullReport?"
+                )
+        backgrounds = {caminho: bg for caminho, bg in backgrounds.items() if bg}
 
         resultados_por_padrao = []
         for arquivo_padrao, nome_certificado in self.padroes_marcados:
@@ -161,11 +202,26 @@ class ConcentracaoVM:
                 continue
             nome = self._nome_unico(arquivo_padrao, {r.nome for r in resultados_por_padrao})
             resultado_padrao = self._calcular_para_padrao(nome, arquivo_padrao, c_padrao, backgrounds)
+            avisos += [a for a in self.model.avisos if a not in avisos]
             if resultado_padrao:
                 resultados_por_padrao.append(resultado_padrao)
+        return resultados_por_padrao, avisos
+
+    def calcular(self):
+        try:
+            resultados_por_padrao, avisos = self._calcular_todos()
+        except ArquivoInvalidoError as erro:
+            messagebox.showerror("Arquivo inválido", str(erro))
+            return None
+        except Exception as erro:
+            messagebox.showerror("Erro no cálculo", mensagem_erro_inesperado(erro))
+            return None
+
+        if avisos:
+            messagebox.showwarning("Atenção", "\n\n".join(f"• {a}" for a in avisos))
 
         if not resultados_por_padrao:
-            return
+            return None
 
         self.resultados_por_padrao = resultados_por_padrao
 
@@ -189,7 +245,7 @@ class ConcentracaoVM:
             try:
                 calcular_extra()
             except Exception as erro:
-                messagebox.showerror(nome, f"Não foi possível calcular {nome}:\n{erro}")
+                messagebox.showerror(nome, f"Não foi possível calcular {nome}.\n\n{mensagem_erro_inesperado(erro)}")
         return resultados_por_padrao
 
     def calcular_z_score(self):

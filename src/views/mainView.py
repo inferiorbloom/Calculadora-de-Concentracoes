@@ -1,4 +1,7 @@
+from tkinter import messagebox
+
 import customtkinter as ctk
+from service.logErros import mensagem_erro_inesperado
 from viewmodels.concentracaoVM import ConcentracaoVM
 
 ctk.set_appearance_mode("dark")
@@ -7,6 +10,9 @@ ctk.set_default_color_theme("dark-blue")
 class MainView(ctk.CTk):
     def __init__(self):
         super().__init__()
+
+        # o .exe não tem console: erro em qualquer botão vira mensagem na tela (e vai para o log)
+        self.report_callback_exception = self._mostrar_erro
 
         self.title("🧪 Calculadora de Concentrações")
         self.geometry("1400x800")
@@ -35,6 +41,9 @@ class MainView(ctk.CTk):
 
         # Monta tela principal
         self.mostrar_tela_inicial()
+
+    def _mostrar_erro(self, _tipo, erro, _traceback):
+        messagebox.showerror("Erro", mensagem_erro_inesperado(erro), parent=self)
 
     def mostrar_tela_inicial(self):
         # Limpa conteúdo anterior

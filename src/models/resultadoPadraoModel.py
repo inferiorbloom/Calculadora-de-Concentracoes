@@ -1,7 +1,5 @@
 from dataclasses import dataclass, field
 
-from models.arredondamentoModel import ArredondamentoModel
-
 
 @dataclass
 class ResultadoPadrao:
@@ -21,7 +19,7 @@ class ResultadoPadrao:
     resultado_limite: dict = field(default_factory=dict)
     z_score_resultado: dict = field(default_factory=dict)
     sensibilidade_resultado: dict = field(default_factory=dict)
-    arredondamento: ArredondamentoModel = field(default_factory=ArredondamentoModel)
+    graficos_traco: dict = field(default_factory=dict)  # amostra -> elementos no traço escolhidos no slider
 
     @property
     def nome_certificado(self):

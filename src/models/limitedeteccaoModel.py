@@ -1,5 +1,6 @@
 import math
-import os
+
+from models.leitorArquivoModel import nome_amostra as _nome_arquivo
 
 
 class LimiteDeteccaoModel:
@@ -75,12 +76,12 @@ class LimiteDeteccaoModel:
 
             limites[arquivo] = limites_area
 
-        nome_padrao = os.path.splitext(os.path.basename(str(arquivo_padrao or "")))[0].strip()
+        nome_padrao = _nome_arquivo(arquivo_padrao or "")
 
         ld_resultado = {}
         for arquivo, elementos in limites.items():
             # a chave é o .txt vinculado na lista de arquivos (ou o próprio .pdf)
-            nome = os.path.splitext(os.path.basename(arquivo))[0].strip()
+            nome = _nome_arquivo(arquivo)
             ld_resultado[nome] = {}
 
             for elemento, limite_area in elementos.items():

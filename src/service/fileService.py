@@ -54,7 +54,7 @@ class Service:
         with pdfplumber.open(caminho_pdf) as pdf:
             texto = ""
             for pagina in pdf.pages:
-                texto += pagina.extract_text() + "\n"
+                texto += (pagina.extract_text() or "") + "\n"  # página só com imagem não tem texto
 
         linhas = texto.splitlines()
 

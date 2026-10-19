@@ -35,6 +35,8 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+# exceto o do projeto: sem ele o build.bat não funciona num clone novo
+!calculadora.spec
 
 # Installer logs
 pip-log.txt
@@ -210,3 +212,6 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Instalador gerado pelo Inno Setup (build.bat)
+instalador/

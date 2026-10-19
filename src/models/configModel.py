@@ -33,21 +33,24 @@ def _gravar_config(**valores):
 
 
 def carregar_ultimo_diretorio():
-    """Carrega o último diretório utilizado a partir do arquivo de configuração."""
-    return _ler_config().get(CHAVE_ULTIMO_DIRETORIO)
+    """
+    Último diretório utilizado, ou None se ele não existir mais (pasta apagada, pendrive removido).
+    Uma pasta inexistente como initialdir faz o Windows mostrar "Não é possível abrir o local".
+    """
+    diretorio = _ler_config().get(CHAVE_ULTIMO_DIRETORIO)
+    return diretorio if diretorio and os.path.isdir(diretorio) else None
 
 
 def salvar_ultimo_diretorio(caminho):
-    """Salva o último diretório utilizado no arquivo de configuração."""
+    """Salva a pasta do caminho informado (um arquivo, que pode ainda não existir, ou a própria pasta)."""
     if not caminho:
         return
 
-    if os.path.isfile(caminho):
-        diretorio = os.path.dirname(caminho)
-    else:
-        diretorio = caminho
-
-    diretorio = os.path.abspath(os.path.expanduser(diretorio))
+    caminho = os.path.abspath(os.path.expanduser(caminho))
+    # o "Salvar como" devolve um arquivo que ainda não existe: guardar a pasta dele, não o arquivo
+    diretorio = caminho if os.path.isdir(caminho) else os.path.dirname(caminho)
+    if not os.path.isdir(diretorio):
+        return
     _gravar_config(**{CHAVE_ULTIMO_DIRETORIO: diretorio})
 
 

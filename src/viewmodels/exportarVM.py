@@ -9,9 +9,10 @@ from models.configModel import (
 from tkinter import filedialog
 
 class ExportarVM:
-    def __init__(self, master, variaveis):
+    def __init__(self, master, variaveis, nome_planilha="amostras.xlsx"):
 
         self.variaveis = variaveis
+        self.nome_planilha = nome_planilha  # sugestão de nome no "Salvar como" (ex.: amostras_Ag.xlsx)
 
         self.exportar_model = ExportarModel()
 
@@ -23,7 +24,7 @@ class ExportarVM:
             self.abas_exportar = list(todas)
 
         self.export = ExportarView(master)
-        self.export.pack(fill="x", padx=10, pady=10)
+        self.export.pack(fill="x")
         self.export.exportar_botao.configure(command=self.exporta_excel)
         self.export.configurar_botao.configure(command=self.configurar_abas)
 
@@ -49,7 +50,7 @@ class ExportarVM:
                 ("Planilhas Excel", "*.xlsx"),
                 ("Todos os arquivos", "*.*")
             ],
-            initialfile="amostras.xlsx",
+            initialfile=self.nome_planilha,
             initialdir=initialdir,
         )
 

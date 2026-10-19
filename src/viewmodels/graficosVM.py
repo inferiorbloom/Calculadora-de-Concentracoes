@@ -7,15 +7,15 @@ from models.configModel import carregar_tipo_grafico, carregar_ultimo_diretorio,
 
 
 class GraficosVM:
-    def __init__(self, master, variaveis):
+    def __init__(self, master, variaveis, alvo=None):
 
         self.variaveis = variaveis
 
         self.graficos_view = GraficosView(master)
-        self.graficos_view.pack(fill="x", padx=10, pady=10)
+        self.graficos_view.pack(fill="x")
         self.graficos_view.botao_grafico.configure(command=self.faz_graficos)
 
-        self.graficos_model = GraficosModel()
+        self.graficos_model = GraficosModel(excluidos={alvo} if alvo else ())
         # vale enquanto o programa estiver aberto (a escolha de cada amostra fica no ResultadoPadrao)
         tipo = carregar_tipo_grafico()
         self.estado = {"automatico": False, "tipo": tipo if tipo in TIPOS else "anel", "base": "concentracao"}

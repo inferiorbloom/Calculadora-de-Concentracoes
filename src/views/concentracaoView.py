@@ -26,16 +26,10 @@ class ConcentracaoView(ctk.CTkFrame):
             size=(20, 20),
         )
 
-        self.label_select = ctk.CTkLabel(self, text="Selecione os arquivos:", font=("Arial", 14, "bold"))
-        self.label_select.pack(pady=10, fill="x", padx=20)
-
         self.selecionar_arquivos = ctk.CTkButton(
             self, text="Selecionar Arquivos", image=icone_pasta, compound="left", font=("Arial", 12)
         )
-        self.selecionar_arquivos.pack(pady=10, fill="x", padx=20)
-
-        self.label_calc = ctk.CTkLabel(self, text="Calcule:", font=("Arial", 14, "bold"))
-        self.label_calc.pack(pady=10, fill="x", padx=20)
+        self.selecionar_arquivos.pack(pady=(15, 10), fill="x", padx=20)
 
         # cálculos extras, feitos junto com o Calcular quando marcados
         self.label_extras = ctk.CTkLabel(self, text="Incluir no cálculo:", font=("Arial", 12, "bold"), anchor="w")

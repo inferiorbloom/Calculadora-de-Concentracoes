@@ -40,8 +40,10 @@ def _escurecer(cor, fator=0.62):
 class GraficosModel:
     """Lógica dos gráficos (majoritário / traço). A janela fica em views/graficosView.py."""
 
-    def __init__(self):
+    def __init__(self, excluidos=()):
+        """excluidos: elementos que não entram nos gráficos (o alvo do tubo de raios X, ex.: {"Ag"})."""
         self.cores = carregar_cores()
+        self.excluidos = set(excluidos)
 
     @staticmethod
     def valores_em_mg_kg(concs, unidades):
@@ -80,13 +82,19 @@ class GraficosModel:
         return {elemento: v for elemento, v in por_elemento.items() if v > 0}
 
     def valores_da_amostra(self, resultado_padrao, amostra, base="concentracao"):
-        """base: "concentracao" (mg/kg) ou "area" (área normalizada, CPS)."""
+        """
+        base: "concentracao" (mg/kg) ou "area" (área normalizada, CPS).
+        Os elementos de self.excluidos (o alvo do tubo) ficam de fora: vêm do tubo, não da amostra.
+        """
         if base == "area":
-            return self.areas_por_elemento(resultado_padrao.areas_normalizadas.get(amostra, {}))
-        for bloco in resultado_padrao.concentracoes.values():
-            if amostra in bloco:
-                return self.valores_em_mg_kg(bloco[amostra], resultado_padrao.unidade_padrao)
-        return {}
+            valores = self.areas_por_elemento(resultado_padrao.areas_normalizadas.get(amostra, {}))
+        else:
+            valores = next(
+                (self.valores_em_mg_kg(bloco[amostra], resultado_padrao.unidade_padrao)
+                 for bloco in resultado_padrao.concentracoes.values() if amostra in bloco),
+                {},
+            )
+        return {elemento: v for elemento, v in valores.items() if elemento not in self.excluidos}
 
     @staticmethod
     def chave_traco(amostra, base="concentracao"):
@@ -291,6 +299,8 @@ class GraficosModel:
         fracao = self.fracao_traco(valores, traco)
         soma_traco = sum(v for _, v in traco)
         complemento = f" · padrão {padrao}" if padrao else ""
+        if self.excluidos:
+            complemento += f" · sem {', '.join(sorted(self.excluidos))} (alvo do tubo)"
 
         fig_maj = Figure(figsize=(6.4, 3.6))
         fatias, outros = self.montar_fatias(majoritarios, ("Traço", soma_traco) if traco else None, tema, limite)

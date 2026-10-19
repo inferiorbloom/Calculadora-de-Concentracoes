@@ -24,8 +24,14 @@ class ConcentracaoVM:
                 result_frame,
                 arquivos_frame,
                 dynamic_frame,
-                mostrar_tela_inicial):
+                mostrar_tela_inicial,
+                alvo=None):
+        """alvo: "Ag", "Au" ou "Rh" quando houver uma calculadora por aba de alvo."""
 
+        self.alvo = alvo
+        # chamados pela tela principal: ao_calcular(n_amostras) e ao_editar_padroes(vm, lista)
+        self.ao_calcular = None
+        self.ao_editar_padroes = None
         self.sidebar_frame = sidebar_frame
         self.result_frame = result_frame
         self.arquivos_frame = arquivos_frame
@@ -69,16 +75,33 @@ class ConcentracaoVM:
             nomes_padroes=self.padrao_vm.nomes_padroes(),
         )
         self.lista_arquivos_view.pack(fill="both", expand=True)
-        self.padrao_vm.ao_atualizar_padroes(self.lista_arquivos_view.atualizar_padroes)
+        self.padrao_vm.padrao_view.ao_atualizar = self._padroes_editados
+
+        # Exportar e Gráficos dividem a mesma caixa no menu
+        self.caixa_saidas = ctk.CTkFrame(sidebar_frame)
+        self.caixa_saidas.pack(fill="x", padx=10, pady=10)
 
         # Chama a Exportacao
-        self.export = ExportarVM(sidebar_frame, self.variaveis)
+        nome_planilha = f"amostras_{alvo}.xlsx" if alvo else "amostras.xlsx"
+        self.export = ExportarVM(self.caixa_saidas, self.variaveis, nome_planilha)
 
         # Chama os Graficos
-        self.graficos = GraficosVM(sidebar_frame, self.variaveis)
+        self.graficos = GraficosVM(self.caixa_saidas, self.variaveis, alvo)  # o alvo do tubo fica fora dos gráficos
 
         # Chama os Limite
         self.limite_deteccao = LimiteDeteccaoVM(sidebar_frame, self.service, self.variaveis)
+
+    def _padroes_editados(self, lista):
+        """Padrões salvos/excluídos no Gerenciar Padrões desta aba: atualiza aqui e avisa as outras abas."""
+        self.receber_padroes(lista)
+        if self.ao_editar_padroes:
+            self.ao_editar_padroes(self, lista)
+
+    def receber_padroes(self, lista):
+        """Nova lista de padrões certificados (editada aqui ou em outra aba de alvo)."""
+        self.padrao_vm.padrao_view.lista_dados = list(lista)
+        self.padrao_vm.variaveis.padroes = list(lista)
+        self.lista_arquivos_view.atualizar_padroes([item["nome"] for item in lista])
 
     def botoes(self):
         if not self.botoes_criados:
@@ -233,6 +256,8 @@ class ConcentracaoVM:
         self.graficos.habilita_graficos()
 
         self.resultados_view.mostrar_resultados(resultados_por_padrao)
+        if self.ao_calcular:
+            self.ao_calcular(len(self.arquivos_amostras))
 
         # cálculos extras marcados na lista; um erro em um deles não pode passar despercebido
         extras = [

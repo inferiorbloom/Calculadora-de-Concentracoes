@@ -105,6 +105,23 @@ class AreaNormalizadaTests(unittest.TestCase):
                          ["a - area - majoritario.png", "a - area - traco.png"])
 
 
+class AlvoDoTuboTests(unittest.TestCase):
+    def test_alvo_fica_fora_dos_graficos_nas_duas_bases(self):
+        r = _resultado()
+        r.concentracoes["concentracao1"]["a"][("Ag", 22.1)] = 5.0
+        r.areas_normalizadas = {"a": {("Ag", 22.1): 900.0, ("K", 3.3): 500.0}}
+        model = GraficosModel(excluidos={"Ag"})
+
+        self.assertNotIn("Ag", model.valores_da_amostra(r, "a"))
+        self.assertEqual(model.valores_da_amostra(r, "a", "area"), {"K": 500.0})
+        self.assertIn("Ag", GraficosModel(excluidos={"Au"}).valores_da_amostra(r, "a"))
+
+    def test_subtitulo_avisa_qual_alvo_saiu(self):
+        figura = GraficosModel(excluidos={"Rh"}).criar_figuras("a", VALORES, 1)[0]
+        textos = [t.get_text() for t in figura.texts]
+        self.assertTrue(any("sem Rh (alvo do tubo)" in t for t in textos))
+
+
 class CoresETiposTests(unittest.TestCase):
     def setUp(self):
         self.model = GraficosModel()

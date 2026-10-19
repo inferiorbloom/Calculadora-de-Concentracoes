@@ -4,6 +4,7 @@ import os
 CONFIG_FILE = os.path.join(os.path.expanduser("~"), ".cx_calculator_config.json")
 CHAVE_ULTIMO_DIRETORIO = "ultimo_diretorio"
 CHAVE_ABAS_EXPORTAR = "abas_exportar"
+CHAVE_TIPO_GRAFICO = "tipo_grafico"
 
 
 def _ler_config():
@@ -58,3 +59,12 @@ def carregar_abas_exportar():
 
 def salvar_abas_exportar(abas):
     _gravar_config(**{CHAVE_ABAS_EXPORTAR: list(abas)})
+
+
+def carregar_tipo_grafico():
+    """Tipo de gráfico escolhido da última vez (anel, pizza, pizza3d, barras), ou None."""
+    return _ler_config().get(CHAVE_TIPO_GRAFICO)
+
+
+def salvar_tipo_grafico(tipo):
+    _gravar_config(**{CHAVE_TIPO_GRAFICO: tipo})

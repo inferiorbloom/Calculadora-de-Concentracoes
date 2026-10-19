@@ -75,5 +75,52 @@ class GraficosModelTests(unittest.TestCase):
         ]))
 
 
+class CoresETiposTests(unittest.TestCase):
+    def setUp(self):
+        self.model = GraficosModel()
+
+    def test_cada_elemento_tem_a_mesma_cor_em_qualquer_posicao(self):
+        cores_a = {r: c for r, _, c in self.model.montar_fatias([("Fe", 9.0), ("Cu", 1.0)], None, "claro")[0]}
+        cores_b = {r: c for r, _, c in self.model.montar_fatias([("Cu", 9.0), ("Zn", 5.0), ("Fe", 1.0)], None, "escuro")[0]}
+        self.assertEqual(cores_a["Fe"], cores_b["Fe"])
+        self.assertEqual(cores_a["Cu"], cores_b["Cu"])
+        self.assertNotEqual(cores_a["Fe"], cores_a["Cu"])
+
+    def test_todos_os_elementos_da_tabela_tem_cor(self):
+        from models.elementosQuimicos import ELEMENTOS
+        self.assertEqual(set(ELEMENTOS.values()) - set(self.model.cores), set())
+
+    def test_arquivo_do_laboratorio_sobrepoe_so_os_elementos_dele(self):
+        import json
+        from models import coresElementosModel as cores_model
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, "cores.json")
+            with open(caminho, "w", encoding="utf-8") as f:
+                json.dump({"Fe": "#123456", "Cu": "vermelho"}, f)  # cor inválida é ignorada
+            original = cores_model.ARQUIVO_USUARIO
+            cores_model.ARQUIVO_USUARIO = caminho
+            try:
+                cores = cores_model.carregar_cores()
+            finally:
+                cores_model.ARQUIVO_USUARIO = original
+        self.assertEqual(cores["Fe"], "#123456")
+        self.assertEqual(cores["Cu"], self.model.cores["Cu"])
+
+    def test_barras_mostram_todos_e_pizzas_agrupam_em_outros(self):
+        itens = [(f"E{i}", float(20 - i)) for i in range(14)]
+        pizza, outros = self.model.montar_fatias(itens, None, "claro")
+        barras, _ = self.model.montar_fatias(itens, None, "claro", limite=None)
+        self.assertEqual(len(pizza), 10)
+        self.assertEqual(len(outros), 5)
+        self.assertEqual(len(barras), 14)
+
+    def test_os_quatro_tipos_desenham(self):
+        from models.graficosModel import TIPOS
+        for tipo in TIPOS:
+            for tema in ("claro", "escuro"):
+                for figura in self.model.criar_figuras("a", VALORES, 2, tema, "pd", tipo):
+                    figura.canvas.draw()  # quebra aqui se algo no desenho estiver errado
+
+
 if __name__ == "__main__":
     unittest.main()

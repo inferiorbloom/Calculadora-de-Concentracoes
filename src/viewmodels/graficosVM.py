@@ -1,8 +1,9 @@
 from tkinter import filedialog, messagebox
 
 from views.graficosView import GraficosView, GraficosJanela
-from models.graficosModel import GraficosModel
-from models.configModel import carregar_ultimo_diretorio
+from models.graficosModel import GraficosModel, TIPOS
+from models.coresElementosModel import carregar_cores
+from models.configModel import carregar_tipo_grafico, carregar_ultimo_diretorio, salvar_tipo_grafico
 
 
 class GraficosVM:
@@ -16,7 +17,8 @@ class GraficosVM:
 
         self.graficos_model = GraficosModel()
         # vale enquanto o programa estiver aberto (a escolha de cada amostra fica no ResultadoPadrao)
-        self.estado = {"automatico": False}
+        tipo = carregar_tipo_grafico()
+        self.estado = {"automatico": False, "tipo": tipo if tipo in TIPOS else "anel"}
 
     def habilita_graficos(self):
         """Habilita o botão Graficos"""
@@ -26,8 +28,11 @@ class GraficosVM:
         resultados = list(self.variaveis.resultados_por_padrao)
         if not resultados:
             return None
+        # relê as cores a cada abertura: trocar o arquivo de cores não exige reiniciar o programa
+        self.graficos_model.cores = carregar_cores()
         return GraficosJanela(
             self.graficos_view, resultados, self.graficos_model, self.estado, self.exportar_imagens,
+            ao_trocar_tipo=salvar_tipo_grafico,
         )
 
     def exportar_imagens(self, janela):
@@ -45,9 +50,9 @@ class GraficosVM:
             for amostra in self.graficos_model.amostras(r):
                 valores = self.graficos_model.valores_da_amostra(r, amostra)
                 n = self.graficos_model.n_traco_da_amostra(r, amostra, valores, self.estado["automatico"])
-                itens.append((r.rotulo if varios else None, amostra, valores, n))
+                itens.append((r.rotulo if varios else None, amostra, valores, n, r.nome))
 
-        gravados = self.graficos_model.exportar(pasta, itens)
+        gravados = self.graficos_model.exportar(pasta, itens, self.estado["tipo"])
         messagebox.showinfo(
             "Gráficos exportados",
             f"{len(gravados)} imagens salvas em:\n{pasta}"

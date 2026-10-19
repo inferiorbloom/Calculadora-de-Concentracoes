@@ -2,6 +2,7 @@ import customtkinter as ctk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from PIL import Image
 
+from models.graficosModel import TEMAS, TIPOS
 from resource_utils import resource_path
 
 # Configurações iniciais do customtkinter
@@ -33,21 +34,23 @@ class GraficosJanela(ctk.CTkToplevel):
     vão para o traço; a escolha fica guardada por amostra (ResultadoPadrao.graficos_traco) para a exportação.
     """
 
-    def __init__(self, master, resultados_por_padrao, model, estado, ao_exportar):
+    def __init__(self, master, resultados_por_padrao, model, estado, ao_exportar, ao_trocar_tipo=None):
         """
-        estado: {"automatico": bool}, compartilhado com o VM para valer também na exportação.
+        estado: {"automatico": bool, "tipo": chave de TIPOS}, compartilhado com o VM para valer na exportação.
         ao_exportar(janela): chamado pelo botão Exportar imagens.
+        ao_trocar_tipo(tipo): chamado ao escolher outro tipo de gráfico (para lembrar da escolha).
         """
         super().__init__(master)
         self.title("Gráficos")
         self.model = model
         self.estado = estado
+        self.ao_trocar_tipo = ao_trocar_tipo
         self.resultados = {r.rotulo: r for r in resultados_por_padrao}
         self.resultado = resultados_por_padrao[0]
         self.valores = {}
         self.canvases = []
 
-        largura, altura = 1120, 640
+        largura, altura = 1320, 660
         x = (self.winfo_screenwidth() - largura) // 2
         y = (self.winfo_screenheight() - altura) // 2
         self.geometry(f"{largura}x{altura}+{x}+{y}")
@@ -70,6 +73,14 @@ class GraficosJanela(ctk.CTkToplevel):
         )
         self.combo_amostra.pack(side="left")
 
+        # tipo de gráfico (vale para a tela e para as imagens exportadas)
+        self.seletor_tipo = ctk.CTkSegmentedButton(
+            topo, values=list(TIPOS.values()), command=self._trocar_tipo, font=("Arial", 12),
+        )
+        self.seletor_tipo.set(TIPOS[self.estado.get("tipo", "anel")])
+        self.seletor_tipo.pack(side="right")
+        ctk.CTkLabel(topo, text="Gráfico:", font=("Arial", 13, "bold")).pack(side="right", padx=(0, 6))
+
         # --- slider: elementos no traço ---
         linha_slider = ctk.CTkFrame(self, fg_color="transparent")
         linha_slider.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
@@ -81,7 +92,7 @@ class GraficosJanela(ctk.CTkToplevel):
         self.label_slider.pack(side="left", padx=10)
 
         # --- gráficos ---
-        self.frame_graficos = ctk.CTkFrame(self)
+        self.frame_graficos = ctk.CTkFrame(self, fg_color=TEMAS["escuro"]["fundo"])
         self.frame_graficos.grid(row=2, column=0, sticky="nsew", padx=10)
         self.frame_graficos.grid_rowconfigure(0, weight=1)
         self.frame_graficos.grid_columnconfigure((0, 1), weight=1)
@@ -119,6 +130,12 @@ class GraficosJanela(ctk.CTkToplevel):
         atual = self.combo_amostra.get()
         self.combo_amostra.configure(values=amostras)
         self.combo_amostra.set(atual if atual in amostras else (amostras[0] if amostras else ""))
+        self._atualizar()
+
+    def _trocar_tipo(self, nome):
+        self.estado["tipo"] = next(chave for chave, rotulo in TIPOS.items() if rotulo == nome)
+        if self.ao_trocar_tipo:
+            self.ao_trocar_tipo(self.estado["tipo"])
         self._atualizar()
 
     def _trocar_automatico(self):
@@ -159,7 +176,10 @@ class GraficosJanela(ctk.CTkToplevel):
             text=f"{len(traco)} de {len(self.valores)} "
                  f"({self.model.formatar_percentual(self.model.fracao_traco(self.valores, traco))} do total)"
         )
-        for coluna, figura in enumerate(self.model.criar_figuras(amostra, self.valores, n)):
+        figuras = self.model.criar_figuras(
+            amostra, self.valores, n, "escuro", self.resultado.nome, self.estado.get("tipo", "anel")
+        )
+        for coluna, figura in enumerate(figuras):
             canvas = FigureCanvasTkAgg(figura, master=self.frame_graficos)
             canvas.draw()
             canvas.get_tk_widget().grid(row=0, column=coluna, sticky="nsew", padx=5, pady=5)

@@ -12,6 +12,8 @@ class Variaveis(ctk.CTkFrame):
         self.lista_arquivos = []
         # um ResultadoPadrao para cada padrão marcado na lista de arquivos
         self.resultados_por_padrao = []
+        # nomes das amostras (ficha de informação ou digitados): {código da medida: nome}
+        self.nomes_amostras = {}
 
         self.padroes = {}
         self.path = user_data_path("padroes", "padroes.json")

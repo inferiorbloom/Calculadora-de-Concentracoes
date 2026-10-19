@@ -2,6 +2,7 @@ import customtkinter as ctk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from PIL import Image
 
+from models.fichaInformacaoModel import nome_da_amostra
 from models.graficosModel import BASES, TEMAS, TIPOS
 from resource_utils import resource_path
 
@@ -32,17 +33,20 @@ class GraficosJanela(ctk.CTkToplevel):
     vão para o traço; a escolha fica guardada por amostra (ResultadoPadrao.graficos_traco) para a exportação.
     """
 
-    def __init__(self, master, resultados_por_padrao, model, estado, ao_exportar, ao_trocar_tipo=None):
+    def __init__(self, master, resultados_por_padrao, model, estado, ao_exportar, ao_trocar_tipo=None, nomes=None):
         """
         estado: {"automatico": bool, "tipo": chave de TIPOS}, compartilhado com o VM para valer na exportação.
         ao_exportar(janela): chamado pelo botão Exportar imagens.
         ao_trocar_tipo(tipo): chamado ao escolher outro tipo de gráfico (para lembrar da escolha).
+        nomes: {código: nome} da ficha de informação, mostrados no lugar do código.
         """
         super().__init__(master)
         self.title("Gráficos")
         self.model = model
         self.estado = estado
         self.ao_trocar_tipo = ao_trocar_tipo
+        self.nomes = nomes or {}
+        self.codigos = {}  # texto do combo de amostra -> código da amostra
         self.resultados = {r.rotulo: r for r in resultados_por_padrao}
         self.resultado = resultados_por_padrao[0]
         self.valores = {}
@@ -132,11 +136,20 @@ class GraficosJanela(ctk.CTkToplevel):
         self._carregar_amostras()
 
     def _carregar_amostras(self):
-        amostras = self.model.amostras(self.resultado)
+        # no combo, "nome · código" (dois nomes iguais continuam distinguíveis); sem nome, só o código
+        self.codigos = {}
+        for amostra in self.model.amostras(self.resultado):
+            nome = nome_da_amostra(self.nomes, amostra)
+            self.codigos[f"{nome} · {amostra}" if nome else amostra] = amostra
+        textos = list(self.codigos)
         atual = self.combo_amostra.get()
-        self.combo_amostra.configure(values=amostras)
-        self.combo_amostra.set(atual if atual in amostras else (amostras[0] if amostras else ""))
+        self.combo_amostra.configure(values=textos)
+        self.combo_amostra.set(atual if atual in textos else (textos[0] if textos else ""))
         self._atualizar()
+
+    def _amostra(self):
+        """Código da amostra escolhida no combo."""
+        return self.codigos.get(self.combo_amostra.get(), "")
 
     def _trocar_tipo(self, nome):
         self.estado["tipo"] = next(chave for chave, rotulo in TIPOS.items() if rotulo == nome)
@@ -153,7 +166,7 @@ class GraficosJanela(ctk.CTkToplevel):
         self._atualizar()
 
     def _mover_slider(self, valor):
-        amostra = self.combo_amostra.get()
+        amostra = self._amostra()
         chave = self.model.chave_traco(amostra, self.estado.get("base", "concentracao"))
         n = int(round(valor))
         if self.resultado.graficos_traco.get(chave) == n:
@@ -163,7 +176,7 @@ class GraficosJanela(ctk.CTkToplevel):
 
     def _atualizar(self):
         """Ajusta o slider à amostra escolhida (cada uma tem o seu número de elementos) e redesenha."""
-        amostra = self.combo_amostra.get()
+        amostra = self._amostra()
         base = self.estado.get("base", "concentracao")
         self.valores = self.model.valores_da_amostra(self.resultado, amostra, base) if amostra else {}
         maximo = self.model.max_traco(self.valores)
@@ -191,7 +204,7 @@ class GraficosJanela(ctk.CTkToplevel):
         )
         figuras = self.model.criar_figuras(
             amostra, self.valores, n, "escuro", self.resultado.nome, self.estado.get("tipo", "anel"),
-            self.estado.get("base", "concentracao"),
+            self.estado.get("base", "concentracao"), self.nomes,
         )
         for coluna, figura in enumerate(figuras):
             canvas = FigureCanvasTkAgg(figura, master=self.frame_graficos)

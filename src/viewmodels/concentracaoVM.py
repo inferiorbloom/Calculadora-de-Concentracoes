@@ -10,6 +10,7 @@ from service.logErros import mensagem_erro_inesperado
 from service.fileService import Service
 from store.variaveis import Variaveis
 from viewmodels.exportarVM import ExportarVM
+from viewmodels.fichaVM import FichaVM
 from viewmodels.padraoVM import PadraoVM
 from viewmodels.graficosVM import GraficosVM
 from viewmodels.limiteDeteccaoVM import LimiteDeteccaoVM
@@ -91,6 +92,20 @@ class ConcentracaoVM:
         # Chama os Limite
         self.limite_deteccao = LimiteDeteccaoVM(sidebar_frame, self.service, self.variaveis)
 
+        # Ficha de informação: nomes das amostras ao lado do código
+        self.ficha = FichaVM(
+            sidebar_frame,
+            self.variaveis,
+            lambda: [caminho for caminho, _, _ in self.lista_arquivos_view.linhas],
+            self._nomes_alterados,
+        )
+
+    def _nomes_alterados(self):
+        """Nomes das amostras lidos da ficha ou editados: atualiza a lista de arquivos e as tabelas."""
+        nomes = self.variaveis.nomes_amostras
+        self.lista_arquivos_view.mostrar_nomes(nomes)
+        self.resultados_view.mostrar_nomes(nomes)
+
     def _padroes_editados(self, lista):
         """Padrões salvos/excluídos no Gerenciar Padrões desta aba: atualiza aqui e avisa as outras abas."""
         self.receber_padroes(lista)
@@ -109,12 +124,14 @@ class ConcentracaoVM:
         # Conectar os botões da View aos métodos da VM
             self.view.selecionar_arquivos.configure(command=self.selecionar_arquivos)
             self.view.calcular.configure(command=self.calcular)
+            self.view.ler_ficha.configure(command=self.ficha.ler_ficha)
+            self.view.editar_nomes.configure(command=self.ficha.editar_nomes)
             self.botoes_criados = True
 
     def selecionar_arquivos(self):
         arquivos = list(self.service.selecionar_arquivos())
         if arquivos and not self._nomes_repetidos(arquivos):
-            self.lista_arquivos_view.carregar(arquivos)
+            self.lista_arquivos_view.carregar(arquivos, self.variaveis.nomes_amostras)
             self._atualizar_selecao()
         return arquivos
 

@@ -8,6 +8,7 @@ from tksheet import Sheet
 
 from models.abaResultadosModel import montar_titulo_coluna
 from models.elementosQuimicos import z_do_elemento
+from models.fichaInformacaoModel import nome_da_amostra
 from models.leitorArquivoModel import nome_amostra as _nome_arquivo
 from resource_utils import resource_path
 
@@ -30,6 +31,20 @@ class ConcentracaoView(ctk.CTkFrame):
             self, text="Selecionar Arquivos", image=icone_pasta, compound="left", font=("Arial", 12)
         )
         self.selecionar_arquivos.pack(pady=(15, 10), fill="x", padx=20)
+
+        # ficha de informação (.docx) com os nomes das amostras; o lápis edita os nomes sem ficha
+        icone_ficha = ctk.CTkImage(
+            light_image=Image.open(resource_path("imagens", "icones", "file.png")),
+            size=(20, 20),
+        )
+        linha_ficha = ctk.CTkFrame(self, fg_color="transparent")
+        linha_ficha.pack(pady=(0, 10), fill="x", padx=20)
+        self.editar_nomes = ctk.CTkButton(linha_ficha, text="✎", width=32, font=("Arial", 14))
+        self.editar_nomes.pack(side="right", padx=(6, 0))
+        self.ler_ficha = ctk.CTkButton(
+            linha_ficha, text="Ficha de informação", image=icone_ficha, compound="left", font=("Arial", 12)
+        )
+        self.ler_ficha.pack(side="left", fill="x", expand=True)
 
         # cálculos extras, feitos junto com o Calcular quando marcados
         self.label_extras = ctk.CTkLabel(self, text="Incluir no cálculo:", font=("Arial", 12, "bold"), anchor="w")
@@ -156,6 +171,11 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
         self.tabelas = {}
         self._criar_aba(self.ABA_CONCENTRACOES)
 
+        # nomes das amostras ({código: nome}) e os últimos dados mostrados, para redesenhar quando os nomes mudam
+        self.nomes = {}
+        self._dados_concentracoes = None
+        self._dados_sensibilidade = None
+
     def _criar_legenda(self):
         legenda = ctk.CTkFrame(self, fg_color="transparent")
         legenda.pack(side="bottom", fill="x", padx=15, pady=(0, 5))
@@ -252,10 +272,11 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
         self.abas[nome].tkraise()
         self.seletor.set(nome)
 
-    def _preencher(self, tabela, colunas, linhas, celulas_destacadas=None):
+    def _preencher(self, tabela, colunas, linhas, celulas_destacadas=None, colunas_texto=1):
         """
         linhas: lista de (valores, tag); tag "ld" destaca a linha, None usa a cor alternada.
         celulas_destacadas: {(linha, coluna): (fundo, texto)}.
+        colunas_texto: quantas colunas do início ficam alinhadas à esquerda (Amostra, Nome).
         """
         dados = [[str(v) for v in valores] for valores, _ in linhas]
         larguras = [170]
@@ -269,7 +290,8 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
         tabela.set_column_widths(larguras)
         tabela.table_align("center", redraw=False)
         tabela.header_align("center", redraw=False)
-        tabela.align("A", align="w", redraw=False)
+        for letra in "AB"[:colunas_texto]:
+            tabela.align(letra, align="w", redraw=False)
 
         listradas = 0
         for indice, (_, tag) in enumerate(linhas):
@@ -325,6 +347,18 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
         self.clipboard_append("\n".join(texto))
         return "break"
 
+    def _com_nome(self, amostras):
+        """A coluna Nome só aparece quando alguma das amostras tem nome."""
+        return any(nome_da_amostra(self.nomes, a) for a in amostras if a)
+
+    def mostrar_nomes(self, nomes):
+        """Nomes das amostras mudaram: redesenha as tabelas que têm amostras, sem trocar a aba aberta."""
+        self.nomes = dict(nomes or {})
+        if self._dados_concentracoes is not None:
+            self._preencher_concentracoes(*self._dados_concentracoes)
+        if self._dados_sensibilidade is not None and self.ABA_SENSIBILIDADE in self.tabelas:
+            self._preencher_sensibilidade(self._dados_sensibilidade)
+
     # mostrar resultados como planilha
     def mostrar_resultados(
         self, concentracoes, ld_resultado=None, unidades=None, nome_padrao=None, erros=None, padrao_certificado=None,
@@ -333,12 +367,18 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
         erros: mesma estrutura de concentracoes, com o erro propagado de cada valor.
         padrao_certificado: {"nome": ..., "elementos": {...}}; mostrado na linha do padrão quando ele não é amostra.
         """
-        ld_resultado = ld_resultado or {}
-        erros = erros or {}
-
         # resultados anteriores de Z'-Score e Sensibilidade não valem mais
         self._remover_aba(self.ABA_Z_SCORE)
         self._remover_aba(self.ABA_SENSIBILIDADE)
+        self._dados_sensibilidade = None
+
+        self._dados_concentracoes = (concentracoes, ld_resultado, unidades, nome_padrao, erros, padrao_certificado)
+        self._preencher_concentracoes(*self._dados_concentracoes)
+        self._mostrar_aba(self.ABA_CONCENTRACOES)
+
+    def _preencher_concentracoes(self, concentracoes, ld_resultado, unidades, nome_padrao, erros, padrao_certificado):
+        ld_resultado = ld_resultado or {}
+        erros = erros or {}
 
         # Junta todos os elementos presentes em qualquer amostra, em ordem de número atômico
         todos_elementos = set()
@@ -355,6 +395,12 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
             for nome, elementos in conc_amostra.items():
                 amostras.append((nome, elementos, erros_bloco.get(nome, {})))
         nomes_amostras = [nome for nome, _, _ in amostras]
+        com_nome = self._com_nome(nomes_amostras + [nome_padrao])
+        primeira = 2 if com_nome else 1  # coluna do primeiro elemento
+
+        def inicio(rotulo, amostra=None):
+            """Primeiras células da linha: o rótulo e, se houver a coluna, o nome da amostra."""
+            return [rotulo, nome_da_amostra(self.nomes, amostra) if amostra else ""] if com_nome else [rotulo]
 
         def texto_celula(valor, erro):
             """'C ± Erro'; sem erro, só o valor."""
@@ -368,7 +414,7 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
         linhas = []
         ld_padrao = ld_resultado.get(nome_padrao)
         if ld_padrao:
-            linhas.append(([f"LD - {nome_padrao}"] + [_formatar_ld(ld_padrao.get(s)) for s in simbolos], "ld"))
+            linhas.append((inicio(f"LD - {nome_padrao}") + [_formatar_ld(ld_padrao.get(s)) for s in simbolos], "ld"))
 
         # 2ª linha: o próprio padrão. Se ele também for amostra, sobe para cá; senão, mostra os valores certificados
         rotulo_padrao = f"{nome_padrao} (Pd)"
@@ -384,14 +430,14 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
                 valor, erro = info.get("valor_str", info.get("valor")), info.get("erro_str", info.get("erro"))
                 return f"{valor}{SEPARADOR_ERRO}{erro}" if erro not in (None, "") else str(valor)
 
-            linhas.append(([rotulo_padrao] + [texto_certificado(s) for s in simbolos], None))
+            linhas.append((inicio(rotulo_padrao, nome_padrao) + [texto_certificado(s) for s in simbolos], None))
 
         destacadas = {}
         for nome_amostra, elementos, erros_amostra in amostras:
             indice_linha = len(linhas)
-            celulas = [rotulo_padrao if nome_amostra == nome_padrao else nome_amostra]
+            celulas = inicio(rotulo_padrao if nome_amostra == nome_padrao else nome_amostra, nome_amostra)
 
-            for coluna, (chave, simbolo) in enumerate(zip(todos_elementos, simbolos), start=1):
+            for coluna, (chave, simbolo) in enumerate(zip(todos_elementos, simbolos), start=primeira):
                 texto = texto_celula(elementos.get(chave), erros_amostra.get(chave))
                 valor = _para_float(elementos.get(chave))
                 erro = _para_float(erros_amostra.get(chave))
@@ -416,9 +462,10 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
 
             linhas.append((celulas, None))
 
-        colunas = ["Amostra"] + [_titulo_coluna(e, unidades, contagem) for e in todos_elementos]
-        self._preencher(self.tabelas[self.ABA_CONCENTRACOES], colunas, linhas, destacadas)
-        self._mostrar_aba(self.ABA_CONCENTRACOES)
+        colunas = (["Amostra", "Nome"] if com_nome else ["Amostra"]) + [
+            _titulo_coluna(e, unidades, contagem) for e in todos_elementos
+        ]
+        self._preencher(self.tabelas[self.ABA_CONCENTRACOES], colunas, linhas, destacadas, colunas_texto=primeira)
 
     def mostrar_z_score(self, resultados):
         if not resultados:
@@ -444,16 +491,21 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
     def mostrar_sensibilidade(self, resultados):
         if not resultados:
             return
+        self._dados_sensibilidade = resultados
+        self._preencher_sensibilidade(resultados)
+        self._mostrar_aba(self.ABA_SENSIBILIDADE)
 
+    def _preencher_sensibilidade(self, resultados):
+        com_nome = self._com_nome(resultados)
         linhas = []
         for nome_amostra, elementos in resultados.items():
+            inicio = [nome_amostra, nome_da_amostra(self.nomes, nome_amostra)] if com_nome else [nome_amostra]
             for chave, valor in sorted(elementos.items(), key=lambda item: _chave_ordem(item[0])):
                 elemento, energia = chave
-                linhas.append(([nome_amostra, elemento, f"{energia:.3f}", f"{valor:.6g}"], None))
+                linhas.append((inicio + [elemento, f"{energia:.3f}", f"{valor:.6g}"], None))
 
-        colunas = ["Amostra", "Elemento", "Energia (keV)", "Sensibilidade"]
-        self._preencher(self._aba(self.ABA_SENSIBILIDADE), colunas, linhas)
-        self._mostrar_aba(self.ABA_SENSIBILIDADE)
+        colunas = (["Amostra", "Nome"] if com_nome else ["Amostra"]) + ["Elemento", "Energia (keV)", "Sensibilidade"]
+        self._preencher(self._aba(self.ABA_SENSIBILIDADE), colunas, linhas, colunas_texto=2 if com_nome else 1)
 
 
 class ResultadosPadroesView(ctk.CTkFrame):
@@ -472,6 +524,7 @@ class ResultadosPadroesView(ctk.CTkFrame):
 
         self.views = {}  # rótulo -> ConcentracaoResultadoView
         self.rotulos = {}  # nome do padrão -> rótulo
+        self.nomes = {}  # nomes das amostras ({código: nome}), repassados a cada padrão
         self.ativo = None
         self._criar_views([None])
 
@@ -507,6 +560,7 @@ class ResultadosPadroesView(ctk.CTkFrame):
         self._criar_views([r.rotulo for r in resultados_por_padrao])
 
         for r in resultados_por_padrao:
+            self._view(r).nomes = self.nomes
             self._view(r).mostrar_resultados(
                 r.concentracoes,
                 r.resultado_limite,
@@ -519,6 +573,11 @@ class ResultadosPadroesView(ctk.CTkFrame):
         # recalculando, continua no padrão que estava aberto
         if anterior in self.views:
             self._mostrar_padrao(anterior)
+
+    def mostrar_nomes(self, nomes):
+        self.nomes = dict(nomes or {})
+        for view in self.views.values():
+            view.mostrar_nomes(self.nomes)
 
     def mostrar_z_score(self, resultados_por_padrao):
         for r in resultados_por_padrao:
@@ -544,7 +603,8 @@ class ListaArquivosView(ctk.CTkScrollableFrame):
         self.pdfs = {}  # índice da linha -> caminho do FullReport (.pdf) para o LD
         self.botoes_pdf = {}  # índice da linha -> (botão escolher, botão remover)
         self.combos_padrao = {}  # índice da linha -> combobox do padrão certificado
-        self.grid_columnconfigure(5, weight=1)  # coluna vazia: mantém o LD colado no nome do arquivo
+        self.labels_nome = {}  # índice da linha -> label com o nome da amostra (ficha de informação)
+        self.grid_columnconfigure(6, weight=1)  # coluna vazia: mantém o LD colado no nome do arquivo
         self.mostrar_vazio()
 
     def limpar(self):
@@ -554,6 +614,7 @@ class ListaArquivosView(ctk.CTkScrollableFrame):
         self.pdfs = {}
         self.botoes_pdf = {}
         self.combos_padrao = {}
+        self.labels_nome = {}
 
     def _voltar_ao_topo(self):
         """
@@ -570,11 +631,13 @@ class ListaArquivosView(ctk.CTkScrollableFrame):
         ).grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky="w")
         self._voltar_ao_topo()
 
-    def carregar(self, caminhos):
+    def carregar(self, caminhos, nomes=None):
+        """nomes: {código: nome} da ficha de informação, mostrados ao lado do arquivo."""
         self.limpar()
 
         # cabeçalho
-        for col, texto in enumerate(["Padrão", "Amostra", "Arquivo", "Padrão Certificado", "Limite de Detecção"]):
+        colunas = ["Padrão", "Amostra", "Arquivo", "Nome", "Padrão Certificado", "Limite de Detecção"]
+        for col, texto in enumerate(colunas):
             ctk.CTkLabel(self, text=texto, font=("Arial Black", 13)).grid(
                 row=0, column=col, padx=10, pady=(5, 5), sticky="w"
             )
@@ -595,6 +658,10 @@ class ListaArquivosView(ctk.CTkScrollableFrame):
                 row=indice + 1, column=2, padx=10, pady=3, sticky="w"
             )
 
+            label_nome = ctk.CTkLabel(self, text="", font=("Arial", 13), text_color="#B0B0B0")
+            label_nome.grid(row=indice + 1, column=3, padx=10, pady=3, sticky="w")
+            self.labels_nome[indice] = label_nome
+
             # padrão certificado: só aparece quando a linha estiver marcada como Padrão
             combo_padrao = ctk.CTkComboBox(
                 self,
@@ -608,12 +675,12 @@ class ListaArquivosView(ctk.CTkScrollableFrame):
                 fg_color="#375270",
                 command=lambda _escolha: self._notificar(),
             )
-            combo_padrao.grid(row=indice + 1, column=3, padx=10, pady=3, sticky="w")
+            combo_padrao.grid(row=indice + 1, column=4, padx=10, pady=3, sticky="w")
             combo_padrao.grid_remove()
             self.combos_padrao[indice] = combo_padrao
 
             celula_ld = ctk.CTkFrame(self, fg_color="transparent")
-            celula_ld.grid(row=indice + 1, column=4, padx=10, pady=3, sticky="w")
+            celula_ld.grid(row=indice + 1, column=5, padx=10, pady=3, sticky="w")
 
             botao_pdf = ctk.CTkButton(
                 celula_ld, width=170, height=26, font=("Arial", 12),
@@ -630,7 +697,13 @@ class ListaArquivosView(ctk.CTkScrollableFrame):
             self.linhas.append((caminho, var_padrao, var_amostra))
             self.definir_pdf(indice, None, notificar=False)
 
+        self.mostrar_nomes(nomes)
         self._voltar_ao_topo()
+
+    def mostrar_nomes(self, nomes):
+        """Atualiza a coluna Nome ({código: nome}); arquivo sem nome fica com "—"."""
+        for indice, label in self.labels_nome.items():
+            label.configure(text=nome_da_amostra(nomes, _nome_arquivo(self.linhas[indice][0])) or "—")
 
     def _escolher_pdf(self, indice):
         if self.ao_escolher_pdf:

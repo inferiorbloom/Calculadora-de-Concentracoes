@@ -139,3 +139,46 @@ class AbasExportarDialog(ctk.CTkToplevel):
             return
         self.ao_salvar(escolhidas)
         self.destroy()
+
+
+class ExportarTodosView(ctk.CTkFrame):
+    """Aba lateral "Exportar": uma planilha só com os resultados de todos os alvos já calculados."""
+
+    def __init__(self, master, alvos):
+        super().__init__(master, corner_radius=10)
+
+        centro = ctk.CTkFrame(self, fg_color="transparent")
+        centro.place(relx=0.5, rely=0.45, anchor="center")
+
+        ctk.CTkLabel(centro, text="Exportar todos os alvos", font=("Segoe UI", 22, "bold")).pack()
+        ctk.CTkLabel(
+            centro,
+            text="Uma aba por padrão de cada alvo, com a concentração e o erro de cada elemento\n"
+                 "nas amostras e o LD logo abaixo do nome do elemento.",
+            font=("Segoe UI", 13), text_color="#898781", justify="center",
+        ).pack(pady=(10, 15))
+
+        lista = ctk.CTkFrame(centro, fg_color="#2b2b2b")
+        lista.pack(fill="x", pady=(0, 15))
+        lista.grid_columnconfigure(1, weight=1)
+
+        self.status = {}
+        for linha, alvo in enumerate(alvos):
+            ctk.CTkLabel(lista, text=alvo, font=("Segoe UI", 16, "bold"), width=40, anchor="w").grid(
+                row=linha, column=0, padx=(14, 6), pady=6, sticky="w"
+            )
+            self.status[alvo] = ctk.CTkLabel(lista, text="", font=("Segoe UI", 12), anchor="w")
+            self.status[alvo].grid(row=linha, column=1, padx=(6, 14), pady=6, sticky="w")
+
+        icone_excel = ctk.CTkImage(
+            light_image=Image.open(resource_path("imagens", "icones", "excel.png")),
+            size=(20, 20),
+        )
+        self.exportar_botao = ctk.CTkButton(
+            centro, text="Exportar para Excel", state="disabled", image=icone_excel, compound="left",
+            font=("Arial", 13), height=36,
+        )
+        self.exportar_botao.pack(fill="x")
+
+    def mostrar_status(self, alvo, texto, calculado):
+        self.status[alvo].configure(text=texto, text_color="#f0efec" if calculado else "#898781")

@@ -1,43 +1,37 @@
-import pandas as pd
-
 from models.leitorArquivoModel import ler_picos, nome_amostra as _nome_amostra
 
 
 class AbaDadosModel:
-    """Monta o DataFrame usado na aba 'Dados' (dados brutos de cada amostra)."""
+    """Monta a aba 'Dados' (dados brutos de cada amostra)."""
+
+    CABECALHO = [
+        "Elemento",
+        "Z",
+        "Energia (keV)",
+        "Área (CPS)",
+        "Erro (CPS)",
+        "Erro (%)",
+        "Área Normalizada (CPS)",
+        "Erro Normalizado (CPS)",
+    ]
 
     def montar(self, arquivos, areas_normalizadas, erros_normalizados, fatores_normalizacao):
         """
-        Recebe os arquivos de amostra + os dicionários já calculados em
-        ConcentracaoModel e devolve o DataFrame pronto para a aba 'Dados'
-        (sem cabeçalho, pois o cabeçalho já vai embutido nas linhas).
+        Recebe os arquivos de amostra + os dicionários já calculados em ConcentracaoModel e devolve
+        um bloco por amostra: [(nome da amostra, fator de normalização, linhas de picos)],
+        cada linha na ordem de CABECALHO.
         """
-        todos_dados = []
+        blocos = []
 
         for arquivo in arquivos:
             nome_amostra = _nome_amostra(arquivo)
             fator = fatores_normalizacao.get(nome_amostra, "")
-            fator_formatado = ""
-            if isinstance(fator, (int, float)):
-                fator_formatado = round(fator, 2)
-            else:
-                try:
-                    fator_formatado = round(float(fator), 2)
-                except Exception:
-                    fator_formatado = fator
+            try:
+                fator = round(float(fator), 2)
+            except (TypeError, ValueError):
+                pass
 
-            todos_dados.append([nome_amostra, "", "", "", "", "", "", "Normalização:", fator_formatado])
-            todos_dados.append([
-                "Elemento",
-                "Z",
-                "Energia (keV)",
-                "Área (CPS)",
-                "Erro (CPS)",
-                "Erro (%)",
-                "Área Normalizada (CPS)",
-                "Erro Normalizado (CPS)"
-            ])
-
+            linhas = []
             for pico in ler_picos(arquivo):
                 erro_percent = (pico.erro / pico.area) * 100 if pico.area != 0 else 0
 
@@ -49,7 +43,7 @@ class AbaDadosModel:
                 if erro_norm != "":
                     erro_norm = round(float(erro_norm), 0)
 
-                todos_dados.append([
+                linhas.append([
                     pico.elemento or "",
                     pico.z,
                     pico.energia,
@@ -60,6 +54,6 @@ class AbaDadosModel:
                     erro_norm,
                 ])
 
-            todos_dados.append(["", "", "", "", "", "", "", ""])
+            blocos.append((nome_amostra, fator, linhas))
 
-        return pd.DataFrame(todos_dados)
+        return blocos

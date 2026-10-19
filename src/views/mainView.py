@@ -3,6 +3,7 @@ from tkinter import messagebox
 import customtkinter as ctk
 from service.logErros import mensagem_erro_inesperado
 from viewmodels.concentracaoVM import ConcentracaoVM
+from viewmodels.exportarVM import ExportarTodosVM
 from views.abasLateraisView import ALVOS, GERAIS, AbasLateraisView
 
 ctk.set_appearance_mode("dark")
@@ -118,9 +119,8 @@ class MainView(ctk.CTk):
                 tela = TelaEmBreve(self.area, GERAIS[chave][0],
                                    "Em breve: estatísticas com os resultados de Ag, Au e Rh juntos.")
             else:
-                tela = TelaEmBreve(self.area, GERAIS[chave][0],
-                                   "Em breve: uma exportação com os resultados de Ag, Au e Rh juntos.\n"
-                                   "Por enquanto, use o Exportar para Excel no menu de cada alvo.")
+                self.exportar_vm = ExportarTodosVM(self.area, ALVOS, self._resultados_por_alvo, self._nomes_por_alvo)
+                tela = self.exportar_vm.view
             self.telas[chave] = tela
         return self.telas[chave]
 
@@ -130,9 +130,26 @@ class MainView(ctk.CTk):
             return
         if self.tela_atual is not None:
             self.tela_atual.pack_forget()  # só esconde: arquivos e resultados da aba continuam lá
+        if chave == "exportar":
+            self.exportar_vm.atualizar()  # algum alvo pode ter sido calculado desde a última vez
         tela.pack(fill="both", expand=True)
         self.tela_atual = tela
         self.title(f"{TITULO} · {chave}" if chave in ALVOS else TITULO)
+
+    def _resultados_por_alvo(self):
+        """{alvo: lista de ResultadoPadrao}; alvo ainda não aberto ou não calculado fica com lista vazia."""
+        return {
+            alvo: tela.calculo_vm.resultados_por_padrao if isinstance(tela, TelaAlvo) else []
+            for alvo, tela in ((alvo, self.telas.get(alvo)) for alvo in ALVOS)
+        }
+
+    def _nomes_por_alvo(self):
+        """{alvo: {código: nome}} das fichas de informação de cada alvo já aberto."""
+        return {
+            alvo: tela.calculo_vm.variaveis.nomes_amostras
+            for alvo, tela in self.telas.items()
+            if isinstance(tela, TelaAlvo)
+        }
 
     def _repassar_padroes(self, origem, lista):
         """Padrões certificados editados numa aba: as outras abas de alvo passam a ver a mesma lista."""

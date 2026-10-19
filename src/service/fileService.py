@@ -20,9 +20,9 @@ class Service:
 
     def _obter_initialdir(self):
         diretorio_salvo = carregar_ultimo_diretorio()
-        if diretorio_salvo and os.path.isdir(diretorio_salvo):
+        if diretorio_salvo:
             return diretorio_salvo
-        return self.pasta_txt
+        return self.pasta_txt if os.path.isdir(self.pasta_txt) else ""
 
     def _atualizar_diretorio(self, caminho):
         if caminho:

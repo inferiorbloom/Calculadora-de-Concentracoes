@@ -4,6 +4,7 @@ import json
 from tkinter import messagebox
 import winsound
 
+from models.PadraoModel import padroes_semelhantes
 from resource_utils import resource_path
 
 
@@ -55,10 +56,14 @@ class Gerenciar_PadraoView(ctk.CTkFrame):
 
     def janela_gerenciar(self):
 
+        # relê do disco: com várias abas de alvo abertas, a cópia em memória pode estar velha, e salvar
+        # a partir dela apagaria o que foi editado em outra aba
         try:
-            self.padroes = self.variaveis.padroes.copy()
-        except:
-            self.padroes = []
+            with open(self.caminho_json, "r", encoding="utf-8") as arquivo:
+                self.padroes = json.load(arquivo)
+            self.variaveis.padroes = self.padroes.copy()
+        except (OSError, ValueError):
+            self.padroes = list(self.variaveis.padroes or [])
 
         self.win = ctk.CTkToplevel()
         self.win.title("Gerenciar Padrões")
@@ -401,6 +406,27 @@ class Gerenciar_PadraoView(ctk.CTkFrame):
             raise ValueError(f"{elemento}: o {campo} não pode ser negativo.")
         return numero, texto
 
+    def _confirmar_se_parecido(self, padrao, nome_original):
+        """
+        Padrão novo (ou renomeado) parecido com um já cadastrado: pergunta antes de salvar, sem impedir
+        (pode ser parecido mas diferente). Editar um padrão existente sem mudar o nome não pergunta.
+        """
+        ja_existia = any(p["nome"] == nome_original and p.get("elementos") for p in self.padroes)
+        if ja_existia and padrao["nome"] == nome_original:
+            return True
+        outros = [p for p in self.padroes if p["nome"] != nome_original and p.get("elementos")]
+        parecidos = padroes_semelhantes(padrao, outros)
+        if not parecidos:
+            return True
+        lista = "\n".join(f"• {nome}\n   ({'; '.join(motivos)})" for nome, motivos in parecidos)
+        return messagebox.askyesno(
+            "Padrão parecido",
+            f"Este padrão é parecido com {'outro já existente' if len(parecidos) == 1 else 'outros já existentes'}:"
+            f"\n\n{lista}\n\nDeseja realmente salvar \"{padrao['nome']}\" como um novo padrão?",
+            icon="warning",
+            parent=getattr(self, "win", None),
+        )
+
     def salvar_padroes(self):
         nome = self.padrao_selecionado or self.entry_nome.get().strip()
         novo_nome = self.entry_nome.get().strip() or nome
@@ -431,6 +457,8 @@ class Gerenciar_PadraoView(ctk.CTkFrame):
             return
 
         padrao = {"nome": novo_nome, "elementos": dados_elementos}
+        if not self._confirmar_se_parecido(padrao, nome):
+            return
         existentes = [p for p in self.padroes if p["nome"] != nome]
         existentes.append(padrao)
 

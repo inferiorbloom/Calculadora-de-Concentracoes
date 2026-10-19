@@ -12,7 +12,8 @@ ctk.set_default_color_theme("dark-blue")
 
 class ExportarView(ctk.CTkFrame):
     def __init__(self, master):
-        super().__init__(master)
+        # transparente: fica dentro da mesma caixa que o botão Gráficos (montada no ConcentracaoVM)
+        super().__init__(master, fg_color="transparent")
 
         icone_excel = ctk.CTkImage(
             light_image=Image.open(resource_path("imagens", "icones", "excel.png")),
@@ -23,11 +24,8 @@ class ExportarView(ctk.CTkFrame):
             size=(18, 18),
         )
 
-        self.label = ctk.CTkLabel(self, text="Exporte:", font=("Arial", 14, "bold"))
-        self.label.pack(pady=10, fill="x", padx=20)
-
         linha = ctk.CTkFrame(self, fg_color="transparent")
-        linha.pack(pady=10, fill="x", padx=20)
+        linha.pack(pady=(15, 5), fill="x", padx=20)
 
         # engrenagem: escolher quais abas vão para o Excel (fica habilitada mesmo antes de calcular)
         self.configurar_botao = ctk.CTkButton(

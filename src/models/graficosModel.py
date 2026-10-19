@@ -6,6 +6,7 @@ from matplotlib.figure import Figure
 from matplotlib.patches import FancyBboxPatch
 
 from models.coresElementosModel import carregar_cores, cor_do_elemento
+from models.fichaInformacaoModel import nome_da_amostra
 
 FATOR_PARA_MG_KG = {"mg/kg": 1, "g/kg": 1000}
 ALVO_TRACO_AUTOMATICO = 0.05  # "Distribuir automaticamente": traço com cerca de 5% do total
@@ -285,12 +286,16 @@ class GraficosModel:
         self._cabecalho(figura, titulo, "", t)
         figura.text(0.5, 0.45, texto, ha="center", va="center", fontsize=10, color=t["apagado"], fontfamily=FONTE)
 
-    def criar_figuras(self, amostra, valores, n_traco, tema="claro", padrao=None, tipo="anel", base="concentracao"):
+    def criar_figuras(self, amostra, valores, n_traco, tema="claro", padrao=None, tipo="anel", base="concentracao",
+                      nomes=None):
         """
         Figuras do majoritário e do traço (as mesmas da tela e da exportação).
         tema: "escuro" na janela do programa, "claro" (fundo branco) nas imagens exportadas.
         tipo: uma das chaves de TIPOS; base: uma das chaves de BASES.
+        nomes: {código: nome} da ficha de informação; no título, o nome entra no lugar do código.
         """
+        amostra = nome_da_amostra(nomes, amostra) or amostra
+        padrao = (nome_da_amostra(nomes, padrao) or padrao) if padrao else padrao
         tipo = tipo if tipo in TIPOS else "anel"
         unidade = UNIDADE_DA_BASE.get(base, "mg/kg")
         medida = "das áreas normalizadas (CPS)" if base == "area" else "das concentrações (mg/kg)"
@@ -326,10 +331,11 @@ class GraficosModel:
     def _nome_arquivo(texto):
         return re.sub(r'[\\/:*?"<>|]+', "_", str(texto)).strip() or "grafico"
 
-    def exportar(self, pasta, itens, tipo="anel", base="concentracao"):
+    def exportar(self, pasta, itens, tipo="anel", base="concentracao", nomes=None):
         """
         itens: [(subpasta ou None, amostra, valores, n_traco, padrão ou None)].
         Grava "<amostra> - majoritario.png" e, se houver traço, "<amostra> - traco.png" (tema claro, fundo branco).
+        Com nome na ficha, o arquivo vira "<nome> (<código>)", para duas amostras de mesmo nome não se sobrescreverem.
         Com a área normalizada, os nomes ganham " - area" (para não sobrescrever os de concentração).
         Devolve os caminhos.
         """
@@ -341,9 +347,11 @@ class GraficosModel:
             destino = os.path.join(pasta, self._nome_arquivo(subpasta)) if subpasta else pasta
             os.makedirs(destino, exist_ok=True)
             fig_maj, fig_traco = self.criar_figuras(
-                amostra, valores, n_traco, "claro", (padrao or [None])[0], tipo, base
+                amostra, valores, n_traco, "claro", (padrao or [None])[0], tipo, base, nomes
             )
-            prefixo = os.path.join(destino, self._nome_arquivo(amostra) + sufixo)
+            nome = nome_da_amostra(nomes, amostra)
+            arquivo = f"{nome} ({amostra})" if nome else amostra
+            prefixo = os.path.join(destino, self._nome_arquivo(arquivo) + sufixo)
             arquivos = [(fig_maj, f"{prefixo} - majoritario.png")]
             if self.dividir(valores, n_traco)[1]:
                 arquivos.append((fig_traco, f"{prefixo} - traco.png"))

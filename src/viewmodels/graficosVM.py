@@ -33,6 +33,7 @@ class GraficosVM:
         return GraficosJanela(
             self.graficos_view, resultados, self.graficos_model, self.estado, self.exportar_imagens,
             ao_trocar_tipo=salvar_tipo_grafico,
+            nomes=self.variaveis.nomes_amostras,
         )
 
     def exportar_imagens(self, janela):
@@ -54,7 +55,9 @@ class GraficosVM:
                 )
                 itens.append((r.rotulo if varios else None, amostra, valores, n, r.nome))
 
-        gravados = self.graficos_model.exportar(pasta, itens, self.estado["tipo"], self.estado["base"])
+        gravados = self.graficos_model.exportar(
+            pasta, itens, self.estado["tipo"], self.estado["base"], self.variaveis.nomes_amostras
+        )
         messagebox.showinfo(
             "Gráficos exportados",
             f"{len(gravados)} imagens salvas em:\n{pasta}"

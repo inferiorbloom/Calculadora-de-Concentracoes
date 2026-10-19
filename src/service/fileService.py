@@ -1,6 +1,5 @@
 import os
-import customtkinter as ctk
-from tkinter.filedialog import askopenfilename, askopenfilenames
+from tkinter.filedialog import askopenfilenames
 from tkinter import filedialog
 import math
 import pdfplumber
@@ -29,115 +28,86 @@ class Service:
         if caminho:
             salvar_ultimo_diretorio(caminho)
 
-    # Função para selecionar arquivo padrão
-    def selecionar_arquivo_padrao(self):
-        arquivo_padrao = askopenfilename(
+    # Função para selecionar os arquivos (padrão e amostras são marcados depois, na lista)
+    def selecionar_arquivos(self):
+        arquivos = askopenfilenames(
             initialdir=self._obter_initialdir(),
-            title="Selecione o arquivo.txt que deseja utilizar como PADRÃO!",
+            title="Selecione os arquivos.txt (padrão e amostras)",
             filetypes=[("Arquivos de texto", "*.txt")],
         )
-        self._atualizar_diretorio(arquivo_padrao)
-        texto_arquivo_padrao = ctk.CTkLabel(self.master, text="")
-        texto_arquivo_padrao.configure(text=os.path.basename(arquivo_padrao))
-        # arquivo = os.path.basename(arquivo_padrao)
-        return arquivo_padrao
+        if arquivos:
+            self._atualizar_diretorio(arquivos[-1])
+        return arquivos
 
-    # Função para selecionar arquivos das amostras
-    def selecionar_arquivos_amostras(self):
-        arquivos_amostras = askopenfilenames(
+    # Função para selecionar o FullReport (.pdf) de um arquivo da lista
+    def selecionar_fullReport(self):
+        fullreport = filedialog.askopenfilename(
             initialdir=self._obter_initialdir(),
-            title="Selecione os arquivos.txt que deseja utilizar como AMOSTRAS!",
-            filetypes=[("Arquivos de texto", "*.txt")],
-        )
-        if arquivos_amostras:
-            self._atualizar_diretorio(arquivos_amostras[-1])
-        texto_arquivos_amostras = ctk.CTkLabel(self.master, text="")
-        if arquivos_amostras:
-            ultimo = os.path.basename(arquivos_amostras[-1])
-            primeiro = os.path.basename(arquivos_amostras[0])
-            texto_arquivos_amostras.configure(text=f"{primeiro} ... {ultimo}")
-        else:
-            texto_arquivos_amostras.configure(text="Nenhum arquivo selecionado")
-        return arquivos_amostras
-
-
-
-    def selecionar_arquivos_fullReport(self):
-
-        fullreports = filedialog.askopenfilenames(
-            initialdir=self._obter_initialdir(),
-            title="Selecione os FullReports",
+            title="Selecione o FullReport (.pdf) deste arquivo",
             filetypes=[("FullReports", "*.pdf")]
         )
-        if fullreports:
-            self._atualizar_diretorio(fullreports[-1])
+        self._atualizar_diretorio(fullreport)
+        return fullreport
 
-        resultados = {}
+    def extrair_backgrounds(self, caminho_pdf):
+        """Lê o FullReport e retorna o background de cada elemento."""
+        with pdfplumber.open(caminho_pdf) as pdf:
+            texto = ""
+            for pagina in pdf.pages:
+                texto += pagina.extract_text() + "\n"
 
-        for caminho_pdf in fullreports:
+        linhas = texto.splitlines()
 
-            with pdfplumber.open(caminho_pdf) as pdf:
-                texto = ""
-                for pagina in pdf.pages:
-                    texto += pagina.extract_text() + "\n"
+        backgrounds_raw = defaultdict(lambda: {"K": [], "L": []})
 
-            linhas = texto.splitlines()
+        elemento_atual = None
+        camada_atual = None
 
-            backgrounds_raw = defaultdict(lambda: {"K": [], "L": []})
+        for i, linha in enumerate(linhas):
 
-            elemento_atual = None
-            camada_atual = None
+            m_elem = re.match(r"\s*\d+\s*([A-Z][a-z]?)\s+(K|L)\b", linha)
+            if m_elem:
+                elemento_atual = m_elem.group(1)
+                camada_atual = m_elem.group(2)
+                continue
 
-            for i, linha in enumerate(linhas):
-
-                m_elem = re.match(r"\s*\d+\s*([A-Z][a-z]?)\s+(K|L)\b", linha)
-                if m_elem:
-                    elemento_atual = m_elem.group(1)
-                    camada_atual = m_elem.group(2)
-                    continue
-
-                if elemento_atual and camada_atual == "K":
-                    if re.match(r"\s*KA[12]\b(?!\s*Escape)", linha):
-                        if i + 1 < len(linhas):
-                            prox = linhas[i + 1]
-                            m_bg = re.search(r"\d+\.\d+\d+\.\d+\s+(\d+)\b", prox)
-                            if m_bg:
-                                bg = int(m_bg.group(1))
-                                backgrounds_raw[elemento_atual]["K"].append(bg)
-
-                if elemento_atual and camada_atual == "L":
-                    m_area = re.search(r"(\d+)\s*±", linha)
-                    if m_area and i + 1 < len(linhas):
+            if elemento_atual and camada_atual == "K":
+                if re.match(r"\s*KA[12]\b(?!\s*Escape)", linha):
+                    if i + 1 < len(linhas):
                         prox = linhas[i + 1]
                         m_bg = re.search(r"\d+\.\d+\d+\.\d+\s+(\d+)\b", prox)
                         if m_bg:
-                            area = int(m_area.group(1))
                             bg = int(m_bg.group(1))
-                            backgrounds_raw[elemento_atual]["L"].append((area, bg))
+                            backgrounds_raw[elemento_atual]["K"].append(bg)
 
-            backgrounds = {}
+            if elemento_atual and camada_atual == "L":
+                m_area = re.search(r"(\d+)\s*±", linha)
+                if m_area and i + 1 < len(linhas):
+                    prox = linhas[i + 1]
+                    m_bg = re.search(r"\d+\.\d+\d+\.\d+\s+(\d+)\b", prox)
+                    if m_bg:
+                        area = int(m_area.group(1))
+                        bg = int(m_bg.group(1))
+                        backgrounds_raw[elemento_atual]["L"].append((area, bg))
 
-            for elemento, dados in backgrounds_raw.items():
+        backgrounds = {}
 
-                if dados["K"]:
-                    if len(dados["K"]) == 1:
-                        backgrounds[elemento] = dados["K"][0]
-                    else:
-                        backgrounds[elemento] = round(sum(dados["K"]) / len(dados["K"]))
+        for elemento, dados in backgrounds_raw.items():
 
-                elif dados["L"]:
-                    dados_L_ordenados = sorted(dados["L"], key=lambda x: x[0], reverse=True)
+            if dados["K"]:
+                if len(dados["K"]) == 1:
+                    backgrounds[elemento] = dados["K"][0]
+                else:
+                    backgrounds[elemento] = round(sum(dados["K"]) / len(dados["K"]))
 
-                    if len(dados_L_ordenados) >= 2:
-                        bg1 = dados_L_ordenados[0][1]
-                        bg2 = dados_L_ordenados[1][1]
-                        backgrounds[elemento] = round((bg1 + bg2) / 2)
-                    else:
-                        backgrounds[elemento] = dados_L_ordenados[0][1]
+            elif dados["L"]:
+                dados_L_ordenados = sorted(dados["L"], key=lambda x: x[0], reverse=True)
 
-            resultados[caminho_pdf] = backgrounds
-        #print("Resultados dos FullReports:")
-        #print(resultados)
-        #print("=================================")
+                if len(dados_L_ordenados) >= 2:
+                    bg1 = dados_L_ordenados[0][1]
+                    bg2 = dados_L_ordenados[1][1]
+                    backgrounds[elemento] = round((bg1 + bg2) / 2)
+                else:
+                    backgrounds[elemento] = dados_L_ordenados[0][1]
 
-        return resultados
+        return backgrounds

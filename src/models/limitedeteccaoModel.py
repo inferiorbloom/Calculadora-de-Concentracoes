@@ -79,7 +79,8 @@ class LimiteDeteccaoModel:
 
         ld_resultado = {}
         for arquivo, elementos in limites.items():
-            nome = os.path.basename(arquivo).replace(".pdf", "").strip()
+            # a chave é o .txt vinculado na lista de arquivos (ou o próprio .pdf)
+            nome = os.path.splitext(os.path.basename(arquivo))[0].strip()
             ld_resultado[nome] = {}
 
             for elemento, limite_area in elementos.items():

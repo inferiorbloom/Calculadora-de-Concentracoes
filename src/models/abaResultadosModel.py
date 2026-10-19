@@ -18,16 +18,16 @@ def montar_titulo_coluna(elemento, energia, unidade, possui_duplicata):
 
 
 class AbaResultadosModel:
-    """Monta o DataFrame usado na aba 'Resultados' (concentração + erro)."""
+    """Monta o DataFrame usado na aba 'Resultados' (concentração, erro e erro relativo)."""
 
     def __init__(self):
         self.arredondamento = ArredondamentoModel()
 
-    def montar(self, concentracoes, erros_propagados, unidade_padrao):
+    def montar(self, concentracoes, erros_propagados, unidade_padrao, aplicar_arredondamento=True):
         """
         Retorna (df_analise, elementos_ordenados, contagem_elementos).
 
-        df_analise: DataFrame com colunas MultiIndex (nome_coluna, "C"/"Erro").
+        df_analise: DataFrame com colunas MultiIndex (nome_coluna, "C"/"Erro"/"Erro (%)").
         elementos_ordenados / contagem_elementos: precisos depois, na hora de
         escrever o cabeçalho com os LDs no exportarModel.
         """
@@ -80,6 +80,7 @@ class AbaResultadosModel:
 
             colunas.append((nome_coluna, "C"))
             colunas.append((nome_coluna, "Erro"))
+            colunas.append((nome_coluna, "Erro (%)"))
 
         linhas = []
         for nome_amostra, elementos in analise.items():
@@ -95,9 +96,15 @@ class AbaResultadosModel:
                 erro = elementos.get(elemento, {}).get("Erro", "")
 
                 if valor != "":
-                    valor_final, erro_final, _ = self.arredondamento.formatar_resultado(valor, erro, elemento[0])
+                    if aplicar_arredondamento:
+                        valor_final, erro_final, _ = self.arredondamento.formatar_resultado(valor, erro, elemento[0])
+                    else:
+                        valor_final, erro_final = valor, erro
                     linha[(nome_coluna, c_col)] = float(valor_final)
                     linha[(nome_coluna, e_col)] = float(erro_final)
+                    # quanto o erro vale, em %, da concentração
+                    if float(valor_final) != 0 and not np.isnan(float(erro_final)):
+                        linha[(nome_coluna, "Erro (%)")] = abs(float(erro_final) / float(valor_final)) * 100
 
             linhas.append((nome_amostra, linha))
 
@@ -120,4 +127,31 @@ class AbaResultadosModel:
         #print(df_analise.to_string())
 
         return df_analise, elementos_ordenados, contagem_elementos
+
+    LINHAS_ESTATISTICA = ["Média", "Desvio padrão", "DPR (%)"]
+
+    def montar_estatisticas(self, df_analise, nome_padrao=None):
+        """
+        Linhas que vão abaixo das amostras: média e desvio padrão amostral (n - 1) de cada coluna,
+        e DPR (%) = desvio padrão / média × 100, só nas colunas "C".
+        O próprio padrão (se também for amostra) fica fora da conta.
+        """
+        if df_analise is None or df_analise.empty:
+            return pd.DataFrame()
+
+        amostras = df_analise.drop(index=[nome_padrao], errors="ignore") if nome_padrao else df_analise
+        numeros = amostras.apply(pd.to_numeric, errors="coerce")
+        media = numeros.mean()
+        desvio = numeros.std(ddof=1)  # NaN quando houver menos de 2 valores
+
+        relativo = (desvio / media.where(media != 0)).abs() * 100
+        colunas_c = [coluna[1] == "C" for coluna in df_analise.columns]
+        relativo = relativo.where(colunas_c)
+
+        df_estatisticas = pd.DataFrame(
+            [media, desvio, relativo],
+            index=self.LINHAS_ESTATISTICA,
+            columns=df_analise.columns,
+        )
+        return df_estatisticas.astype(object)
 

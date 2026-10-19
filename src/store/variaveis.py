@@ -9,11 +9,9 @@ from resource_utils import ensure_directory, resource_path, user_data_path
 class Variaveis(ctk.CTkFrame):
     def __init__(self, master=None):
         super().__init__(master)
-        self.lista_arquivo_padrao = None
         self.lista_arquivos = []
-        self.resultado_limite = []
-        self.c_padrao = []
-        self.resultados = [None, None]  # armazena os resultados (concentracoes e areas normalizadas)
+        # um ResultadoPadrao para cada padrão marcado na lista de arquivos
+        self.resultados_por_padrao = []
 
         self.padroes = {}
         self.path = user_data_path("padroes", "padroes.json")
@@ -29,7 +27,6 @@ class Variaveis(ctk.CTkFrame):
 
     def verificar_estado(self):
         print("Verificando estado atual das variáveis:")
-        print(f"- Arquivo padrão: {self.lista_arquivo_padrao}")
         print(f"- Amostras: {self.lista_arquivos}")
-        print(f"- Resultado_limite: {self.resultado_limite}")
-        print(f"- Resultados: {'OK' if self.resultados else 'Nenhum'}")
+        for resultado in self.resultados_por_padrao:
+            print(f"- Padrão {resultado.rotulo}: LD={'OK' if resultado.resultado_limite else 'Nenhum'}")

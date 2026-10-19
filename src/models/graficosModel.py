@@ -4,10 +4,11 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
 class GraficosModel:
-    def graficos(self, resultados, master=None):
-        self.concentracoes = resultados[0]
-        self.areas_norm = resultados[1]
-        print("CARAMBA")
+    def graficos(self, resultados_por_padrao, master=None):
+        """resultados_por_padrao: {rótulo do padrão: [concentracoes, areas_normalizadas, ...]}."""
+        rotulos = list(resultados_por_padrao)
+        self.concentracoes = resultados_por_padrao[rotulos[0]][0]
+        self.areas_norm = resultados_por_padrao[rotulos[0]][1]
         # print(self.concentracoes)
         # print(self.areas_norm)
 
@@ -42,7 +43,7 @@ class GraficosModel:
 
         # --- frame para gráficos ---
         frame_graficos = ctk.CTkFrame(config_graficos)
-        frame_graficos.grid(column=0, row=1, columnspan=3, padx=10, pady=10, sticky="nsew")
+        frame_graficos.grid(column=0, row=1, columnspan=4, padx=10, pady=10, sticky="nsew")
         frame_graficos.grid_rowconfigure(0, weight=1)
         frame_graficos.grid_columnconfigure((0, 1), weight=1)
 
@@ -115,6 +116,18 @@ class GraficosModel:
             canvas_traco = FigureCanvasTkAgg(fig2, master=frame_graficos)
             canvas_traco.get_tk_widget().grid(row=0, column=1, sticky="nsew")
             plt.close(fig2)  # <<< FECHA a figura no matplotlib
+
+        # --- seleção do padrão (só quando houver mais de um) ---
+        def trocar_padrao(rotulo):
+            self.concentracoes = resultados_por_padrao[rotulo][0]
+            atualizar_graficos()
+
+        if len(rotulos) > 1:
+            selecione_padrao = ctk.CTkComboBox(
+                config_graficos, values=rotulos, width=220, state="readonly", command=trocar_padrao
+            )
+            selecione_padrao.set(rotulos[0])
+            selecione_padrao.grid(column=3, row=0, padx=10, pady=10)
 
         # vincula eventos
         selecione_amostra.configure(command=lambda _: atualizar_graficos())

@@ -19,6 +19,8 @@ class GraficosVM:
 
     def faz_graficos(self):
         # self.variaveis.verificar_estado()
-        self.resultados = self.variaveis.resultados
-        self.graficos_var = self.graficos_model.graficos(self.resultados)
+        resultados_por_padrao = {r.rotulo: r.resultados for r in self.variaveis.resultados_por_padrao}
+        if not resultados_por_padrao:
+            return None
+        self.graficos_var = self.graficos_model.graficos(resultados_por_padrao)
         return self.graficos_var

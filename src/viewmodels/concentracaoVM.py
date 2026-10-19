@@ -1,9 +1,10 @@
 import os
 import tkinter.messagebox as messagebox
 import customtkinter as ctk
-from views.concentracaoView import ConcentracaoView, ConcentracaoResultadoView, ListaArquivosView
+from views.concentracaoView import ConcentracaoView, ResultadosPadroesView, ListaArquivosView
 from models.concentracaoModel import ConcentracaoModel
 from models.propagacaoErrosModel import PropagacaoErrosModel
+from models.resultadoPadraoModel import ResultadoPadrao
 from service.fileService import Service
 from store.variaveis import Variaveis
 from viewmodels.exportarVM import ExportarVM
@@ -33,9 +34,9 @@ class ConcentracaoVM:
 
         # Variáveis para armazenar arquivos selecionados
         self.variaveis = Variaveis(sidebar_frame)
-        self.arquivo_padrao = self.variaveis.lista_arquivo_padrao
+        self.padroes_marcados = []  # [(caminho do arquivo padrão, nome do padrão certificado)]
         self.arquivos_amostras = self.variaveis.lista_arquivos
-        self.resultado_limite = self.variaveis.resultado_limite
+        self.resultados_por_padrao = []
 
         # Chama os arquivos de service
         self.service = Service(sidebar_frame)
@@ -54,19 +55,22 @@ class ConcentracaoVM:
         self.view = ConcentracaoView(sidebar_frame)
         self.view.pack(fill="x", padx=10, pady=10)
 
-        # Chama o resultado
-        self.resultados_view = ConcentracaoResultadoView(self.result_frame)
+        # Chama o resultado (um conjunto de abas para cada padrão)
+        self.resultados_view = ResultadosPadroesView(self.result_frame)
         self.resultados_view.pack(padx=10, pady=10, fill="both", expand=True)
 
-        # Chama a lista de arquivos (marcação de Padrão e Amostras)
+        # Chama a lista de arquivos (marcação de Padrão, padrão certificado e Amostras)
         self.lista_arquivos_view = ListaArquivosView(
-            self.arquivos_frame, ao_alterar=self._atualizar_selecao, ao_escolher_pdf=self.escolher_fullreport
+            self.arquivos_frame,
+            ao_alterar=self._atualizar_selecao,
+            ao_escolher_pdf=self.escolher_fullreport,
+            nomes_padroes=self.padrao_vm.nomes_padroes(),
         )
         self.lista_arquivos_view.pack(fill="both", expand=True)
+        self.padrao_vm.ao_atualizar_padroes(self.lista_arquivos_view.atualizar_padroes)
 
         # Chama a Exportacao
         self.export = ExportarVM(sidebar_frame, self.variaveis)
-        #self.export.export
 
         # Chama os Graficos
         self.graficos = GraficosVM(sidebar_frame, self.variaveis)
@@ -80,8 +84,6 @@ class ConcentracaoVM:
         # Conectar os botões da View aos métodos da VM
             self.view.selecionar_arquivos.configure(command=self.selecionar_arquivos)
             self.view.calcular.configure(command=self.calcular)
-            self.view.calcular_z_score.configure(command=self.calcular_z_score)
-            self.view.calcular_sensibilidade.configure(command=self.calcular_sensibilidade)
             self.botoes_criados = True
 
     def selecionar_arquivos(self):
@@ -92,8 +94,8 @@ class ConcentracaoVM:
         return arquivos
 
     def _atualizar_selecao(self):
-        """Lê da lista qual arquivo é o padrão e quais são as amostras."""
-        self.arquivo_padrao = self.lista_arquivos_view.arquivo_padrao()
+        """Lê da lista quais arquivos são padrões (com o padrão certificado de cada um) e quais são amostras."""
+        self.padroes_marcados = self.lista_arquivos_view.padroes_selecionados()
         self.arquivos_amostras = self.lista_arquivos_view.arquivos_amostras()
         self._verificar_pronto()
 
@@ -104,95 +106,116 @@ class ConcentracaoVM:
             self.lista_arquivos_view.definir_pdf(indice, caminho_pdf)
 
     def _verificar_pronto(self):
-        """Habilita o botão Calcular só quando houver padrão e amostras marcados."""
-        pronto = bool(self.arquivos_amostras and self.arquivo_padrao)
+        """Habilita o Calcular só com amostras e pelo menos um padrão, todos com padrão certificado escolhido."""
+        pronto = bool(
+            self.arquivos_amostras
+            and self.padroes_marcados
+            and all(self.padrao_vm.buscar_padrao(nome) for _, nome in self.padroes_marcados)
+        )
         self.view.calcular.configure(state="normal" if pronto else "disabled")
 
-    def calcular_limite_deteccao(self):
-        """Calcula o LD das linhas com PDF vinculado; sem PDFs, limpa o resultado anterior."""
-        fullreports = self.lista_arquivos_view.fullreports_por_arquivo()
-        if not fullreports:
-            self.variaveis.resultado_limite = {}
-            return {}
-        return self.limite_deteccao.calcula_resultado_limite(fullreports)
+    @staticmethod
+    def _nome_unico(caminho, usados):
+        """Nome do arquivo sem extensão; se já existir (mesmo nome em pastas diferentes), ganha um sufixo."""
+        base = os.path.splitext(os.path.basename(caminho))[0].strip()
+        nome, n = base, 2
+        while nome in usados:
+            nome, n = f"{base} ({n})", n + 1
+        return nome
 
-    def calcular(self):
-        self.c_padrao = self.padrao_vm.c_padrao_lista_selecionado()
-        self.resultado = self.model.calcular_concentracoes(self.arquivos_amostras,
-                                                           self.arquivo_padrao,
-                                                           self.c_padrao)
-        if not self.resultado:
-            return
-        self.concentracoes = self.resultado[0]
-        self.areas_normalizadas = self.resultado[1]
-        self.fatores_normalizacao = self.resultado[2]
-        self.erros_normalizados = self.resultado[3]
-        self.area_padrao = self.resultado[4]
-        self.erro_padrao = self.resultado[5]
+    def _calcular_para_padrao(self, nome, arquivo_padrao, c_padrao, backgrounds):
+        """Executa todo o cálculo com UM padrão e devolve um ResultadoPadrao (ou None)."""
+        resultado = self.model.calcular_concentracoes(self.arquivos_amostras, arquivo_padrao, c_padrao)
+        if not resultado:
+            return None
 
+        resultado_padrao = ResultadoPadrao(nome, arquivo_padrao, c_padrao, *resultado)
 
-
-        # calcula propagação de erro
-        self.erros_concentracao, self.unidade_padrao = self.erro_model.calcular(
-            self.concentracoes,
-            self.areas_normalizadas,
-            self.erros_normalizados,
-            self.c_padrao,
-            self.area_padrao,
-            self.erro_padrao
+        # propagação de erro
+        resultado_padrao.erros_concentracao, resultado_padrao.unidade_padrao = self.erro_model.calcular(
+            resultado_padrao.concentracoes,
+            resultado_padrao.areas_normalizadas,
+            resultado_padrao.erros_normalizados,
+            c_padrao,
+            resultado_padrao.area_padrao,
+            resultado_padrao.erro_padrao,
         )
 
+        # arredondamento próprio: as casas decimais dependem do padrão certificado
+        resultado_padrao.arredondamento.atualizar_casas_padrao(c_padrao)
 
+        # LD: só das linhas com PDF vinculado
+        if backgrounds:
+            self.limite_deteccao.calcula_resultado_limite(backgrounds, resultado_padrao)
+
+        return resultado_padrao
+
+    def calcular(self):
+        fullreports = self.lista_arquivos_view.fullreports_por_arquivo()
+        backgrounds = self.limite_deteccao.extrair_backgrounds(fullreports) if fullreports else {}
+
+        resultados_por_padrao = []
+        for arquivo_padrao, nome_certificado in self.padroes_marcados:
+            c_padrao = self.padrao_vm.buscar_padrao(nome_certificado)
+            if not c_padrao:
+                continue
+            nome = self._nome_unico(arquivo_padrao, {r.nome for r in resultados_por_padrao})
+            resultado_padrao = self._calcular_para_padrao(nome, arquivo_padrao, c_padrao, backgrounds)
+            if resultado_padrao:
+                resultados_por_padrao.append(resultado_padrao)
+
+        if not resultados_por_padrao:
+            return
+
+        self.resultados_por_padrao = resultados_por_padrao
 
         # Atualiza Variaveis global
         self.variaveis.lista_arquivos = self.arquivos_amostras
-        self.variaveis.lista_arquivo_padrao = self.arquivo_padrao
-        self.variaveis.c_padrao = self.c_padrao
+        self.variaveis.resultados_por_padrao = resultados_por_padrao
 
-        from models.arredondamentoModel import ArredondamentoModel
-        self.arredondamento = ArredondamentoModel()
-        self.arredondamento.atualizar_casas_padrao(self.c_padrao)
-        self.export.exportar_model.arredondamento = self.arredondamento
-        self.export.exportar_model.aba_resultados.arredondamento = self.arredondamento
-        self.variaveis.resultados = self.resultado
-        self.variaveis.erros_concentracao = self.erros_concentracao
-        self.variaveis.unidade_padrao = self.unidade_padrao
+        self.export.habilita_exporta_excel()
+        self.graficos.habilita_graficos()
 
-        # Atualiza a instância dentro de ExportarVM
-        self.export.arquivos_amostras = self.variaveis.lista_arquivos
-        self.export.resultados = self.variaveis.resultados
-        if self.resultado:
-            self.export.habilita_exporta_excel()
-            self.graficos.habilita_graficos()
-            self.limite_deteccao.habilita_limite(self.arquivo_padrao, self.c_padrao)
-            self.calcular_limite_deteccao()
-            self.view.calcular_z_score.configure(state="normal")
-            self.view.calcular_sensibilidade.configure(state="normal")
-        return self.resultados_view.mostrar_resultados(
-            self.resultado[0],
-            self.variaveis.resultado_limite,
-            self.unidade_padrao,
-            os.path.splitext(os.path.basename(self.arquivo_padrao))[0].strip(),
-            erros=self.erros_concentracao,
-            formatar_resultado=self.arredondamento.formatar_resultado,
-        )
+        self.resultados_view.mostrar_resultados(resultados_por_padrao)
+
+        # cálculos extras marcados na lista; um erro em um deles não pode passar despercebido
+        extras = [
+            (self.view.var_z_score.get(), "Z'-Score", self.calcular_z_score),
+            (self.view.var_sensibilidade.get(), "Sensibilidade", self.calcular_sensibilidade),
+        ]
+        for marcado, nome, calcular_extra in extras:
+            if not marcado:
+                continue
+            try:
+                calcular_extra()
+            except Exception as erro:
+                messagebox.showerror(nome, f"Não foi possível calcular {nome}:\n{erro}")
+        return resultados_por_padrao
 
     def calcular_z_score(self):
-        if not hasattr(self, "concentracoes") or not self.c_padrao:
+        if not self.resultados_por_padrao:
             return {}
 
-        self.z_score_resultado = self.z_score_model.calcular(
-            self.concentracoes,
-            self.c_padrao,
-            self.erros_concentracao,
-            self.arquivo_padrao,
-        )
-        self.variaveis.z_score_resultado = self.z_score_resultado
-        self.resultados_view.mostrar_z_score(self.z_score_resultado)
-        return self.z_score_resultado
+        for resultado_padrao in self.resultados_por_padrao:
+            resultado_padrao.z_score_resultado = self.z_score_model.calcular(
+                resultado_padrao.concentracoes,
+                resultado_padrao.c_padrao,
+                resultado_padrao.erros_concentracao,
+                resultado_padrao.arquivo_padrao,
+            )
+        vazios = [r.rotulo for r in self.resultados_por_padrao if not r.z_score_resultado]
+        if vazios:
+            messagebox.showwarning(
+                "Z'-Score",
+                "Nenhum Z'-Score calculado para: " + ", ".join(vazios) + ".\n\n"
+                "É preciso pelo menos 2 amostras (sem contar o próprio padrão) com elementos "
+                "que tenham valor e erro no padrão certificado.",
+            )
+        self.resultados_view.mostrar_z_score(self.resultados_por_padrao)
+        return {r.nome: r.z_score_resultado for r in self.resultados_por_padrao}
 
     def calcular_sensibilidade(self):
-        if not hasattr(self, "concentracoes"):
+        if not self.resultados_por_padrao:
             return {}
 
         dialogo = ctk.CTkInputDialog(
@@ -203,18 +226,22 @@ class ConcentracaoVM:
         if tempo is None:
             return {}
 
+        # calcula tudo antes de gravar, para um erro não deixar os padrões com resultados de tempos diferentes
         try:
-            resultado = self.sensibilidade_model.calcular(
-                self.concentracoes,
-                self.areas_normalizadas,
-                self.c_padrao,
-                tempo,
-            )
+            calculados = [
+                self.sensibilidade_model.calcular(
+                    r.concentracoes,
+                    r.areas_normalizadas,
+                    r.c_padrao,
+                    tempo,
+                )
+                for r in self.resultados_por_padrao
+            ]
         except ValueError as erro:
             messagebox.showerror("Tempo inválido", str(erro))
             return {}
 
-        self.sensibilidade_resultado = resultado
-        self.variaveis.sensibilidade_resultado = resultado
-        self.resultados_view.mostrar_sensibilidade(resultado)
-        return resultado
+        for resultado_padrao, resultado in zip(self.resultados_por_padrao, calculados):
+            resultado_padrao.sensibilidade_resultado = resultado
+        self.resultados_view.mostrar_sensibilidade(self.resultados_por_padrao)
+        return {r.nome: r.sensibilidade_resultado for r in self.resultados_por_padrao}

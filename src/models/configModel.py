@@ -3,20 +3,37 @@ import os
 
 CONFIG_FILE = os.path.join(os.path.expanduser("~"), ".cx_calculator_config.json")
 CHAVE_ULTIMO_DIRETORIO = "ultimo_diretorio"
+CHAVE_ABAS_EXPORTAR = "abas_exportar"
 
 
-def carregar_ultimo_diretorio():
-    """Carrega o último diretório utilizado a partir do arquivo de configuração."""
+def _ler_config():
+    """Lê o arquivo de configuração inteiro ({} se não existir ou estiver corrompido)."""
     if not os.path.exists(CONFIG_FILE):
-        return None
+        return {}
 
     try:
         with open(CONFIG_FILE, "r", encoding="utf-8") as arquivo:
             dados = json.load(arquivo)
     except (OSError, json.JSONDecodeError):
-        return None
+        return {}
 
-    return dados.get(CHAVE_ULTIMO_DIRETORIO)
+    return dados if isinstance(dados, dict) else {}
+
+
+def _gravar_config(**valores):
+    """Atualiza só as chaves informadas, mantendo as demais configurações."""
+    dados = _ler_config()
+    dados.update(valores)
+
+    os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
+
+    with open(CONFIG_FILE, "w", encoding="utf-8") as arquivo:
+        json.dump(dados, arquivo, ensure_ascii=False, indent=2)
+
+
+def carregar_ultimo_diretorio():
+    """Carrega o último diretório utilizado a partir do arquivo de configuração."""
+    return _ler_config().get(CHAVE_ULTIMO_DIRETORIO)
 
 
 def salvar_ultimo_diretorio(caminho):
@@ -30,8 +47,14 @@ def salvar_ultimo_diretorio(caminho):
         diretorio = caminho
 
     diretorio = os.path.abspath(os.path.expanduser(diretorio))
+    _gravar_config(**{CHAVE_ULTIMO_DIRETORIO: diretorio})
 
-    os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
 
-    with open(CONFIG_FILE, "w", encoding="utf-8") as arquivo:
-        json.dump({CHAVE_ULTIMO_DIRETORIO: diretorio}, arquivo, ensure_ascii=False, indent=2)
+def carregar_abas_exportar():
+    """Abas escolhidas para exportar, ou None se o usuário nunca escolheu (exporta todas)."""
+    abas = _ler_config().get(CHAVE_ABAS_EXPORTAR)
+    return list(abas) if isinstance(abas, list) else None
+
+
+def salvar_abas_exportar(abas):
+    _gravar_config(**{CHAVE_ABAS_EXPORTAR: list(abas)})

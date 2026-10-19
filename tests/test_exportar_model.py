@@ -2,6 +2,8 @@ import os
 import sys
 import unittest
 
+import pandas as pd
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from models.exportarModel import ExportarModel
@@ -40,7 +42,36 @@ class ExportarModelTests(unittest.TestCase):
         )
 
         valores_exportados = df.iloc[0].tolist()
-        self.assertEqual(valores_exportados, [valor_calculado, erro_calculado])
+        self.assertEqual(valores_exportados[:2], [valor_calculado, erro_calculado])
+        self.assertAlmostEqual(valores_exportados[2], erro_calculado / valor_calculado * 100)
+
+    def test_erro_percentual_fica_vazio_quando_concentracao_e_zero(self):
+        df, _, _ = AbaResultadosModel().montar(
+            {"arquivo.txt": {"amostra": {("Fe", 1.0): 0.0}}},
+            {"arquivo.txt": {"amostra": {("Fe", 1.0): 0.5}}},
+            {},
+            aplicar_arredondamento=False,
+        )
+
+        self.assertTrue(pd.isna(df.iloc[0][("Fe", "Erro (%)")]))
+
+    def test_estatisticas_media_desvio_e_dpr_sem_o_padrao(self):
+        model = AbaResultadosModel()
+        df, _, _ = model.montar(
+            {"arquivo.txt": {"pd": {("Fe", 1.0): 99.0}, "a": {("Fe", 1.0): 10.0}, "b": {("Fe", 1.0): 20.0}}},
+            {"arquivo.txt": {"pd": {("Fe", 1.0): 9.0}, "a": {("Fe", 1.0): 1.0}, "b": {("Fe", 1.0): 3.0}}},
+            {},
+            aplicar_arredondamento=False,
+        )
+
+        estatisticas = model.montar_estatisticas(df, nome_padrao="pd")
+
+        self.assertEqual(list(estatisticas.index), ["Média", "Desvio padrão", "DPR (%)"])
+        self.assertEqual(estatisticas.loc["Média", ("Fe", "C")], 15.0)
+        self.assertAlmostEqual(estatisticas.loc["Desvio padrão", ("Fe", "C")], 7.0710678, places=6)
+        self.assertAlmostEqual(estatisticas.loc["DPR (%)", ("Fe", "C")], 47.140452, places=5)
+        self.assertEqual(estatisticas.loc["Média", ("Fe", "Erro")], 2.0)
+        self.assertTrue(pd.isna(estatisticas.loc["DPR (%)", ("Fe", "Erro")]))
 
 
 if __name__ == "__main__":

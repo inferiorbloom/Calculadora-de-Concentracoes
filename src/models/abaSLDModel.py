@@ -6,6 +6,8 @@ class AbaSLDModel:
     """Monta a aba com LD e sensibilidade por amostra e elemento."""
 
     COLUNAS = ["Amostra", "Elemento", "Energia (keV)", "LD", "Sensibilidade"]
+    CHAVES = COLUNAS[:3]
+    VALORES = COLUNAS[3:]
 
     @staticmethod
     def _chave_energia(energia):
@@ -13,6 +15,12 @@ class AbaSLDModel:
             return 0, float(energia)
         except (TypeError, ValueError):
             return 1, str(energia)
+
+    @staticmethod
+    def _tem_valor(valor):
+        if valor is None or (isinstance(valor, float) and pd.isna(valor)):
+            return False
+        return str(valor).strip() not in ["", "-", "--", "—", "nan", "NaN", "None"]
 
     def montar(self, ld_resultado=None, sensibilidade_resultado=None, concentracoes=None):
         ld_resultado = ld_resultado or {}
@@ -61,6 +69,8 @@ class AbaSLDModel:
                 ),
             )
             for (elemento, energia), valores in itens_ordenados:
+                if not any(AbaSLDModel._tem_valor(valores.get(v)) for v in self.VALORES):
+                    continue  # sem LD nem sensibilidade: não aparece na aba
                 linhas.append(
                     {
                         "Amostra": nome_amostra,
@@ -72,3 +82,31 @@ class AbaSLDModel:
                 )
 
         return pd.DataFrame(linhas, columns=self.COLUNAS)
+
+    @staticmethod
+    def coluna_do_padrao(valor, nome_padrao):
+        return f"{valor} - {nome_padrao}"
+
+    def montar_varios(self, resultados):
+        """
+        resultados: lista de (nome_padrao, ld_resultado, sensibilidade_resultado, concentracoes).
+        Devolve uma tabela só: Amostra/Elemento/Energia uma vez por linha e, para cada padrão,
+        as colunas coluna_do_padrao("LD", nome) e coluna_do_padrao("Sensibilidade", nome).
+        """
+        linhas = {}
+        colunas = list(self.CHAVES)
+        for nome_padrao, ld_resultado, sensibilidade_resultado, concentracoes in resultados:
+            df = self.montar(ld_resultado, sensibilidade_resultado, concentracoes)
+            nomes_colunas = [self.coluna_do_padrao(valor, nome_padrao) for valor in self.VALORES]
+            colunas += nomes_colunas
+            for registro in df.to_dict("records"):
+                chave = tuple(registro[c] for c in self.CHAVES)
+                linha = linhas.setdefault(chave, dict(zip(self.CHAVES, chave)))
+                for valor, coluna in zip(self.VALORES, nomes_colunas):
+                    linha[coluna] = registro[valor]
+
+        ordenadas = sorted(
+            linhas,
+            key=lambda chave: (chave[0], z_do_elemento(chave[1]), AbaSLDModel._chave_energia(chave[2])),
+        )
+        return pd.DataFrame([linhas[chave] for chave in ordenadas], columns=colunas)

@@ -20,10 +20,15 @@ class PadraoVM:
 
     def volta_padrao(self):
         self.lista_padrao = self.variaveis.padroes
-        # print("Padroes carregados:", self.lista_padrao)
         return self.padrao_view.lista_box(self.lista_padrao, self.gerenciar_padraovm)
 
-    def c_padrao_lista_selecionado(self):
-        escolha_atual = self.padrao_view.combobox.get()
-        self.selecionado = next((item for item in self.padrao_view.lista_dados if item["nome"] == escolha_atual), None)
-        return self.selecionado
+    def nomes_padroes(self):
+        return [item["nome"] for item in self.padrao_view.lista_dados]
+
+    def buscar_padrao(self, nome):
+        """Retorna o padrão certificado com esse nome (ou None)."""
+        return next((item for item in self.padrao_view.lista_dados if item["nome"] == nome), None)
+
+    def ao_atualizar_padroes(self, callback):
+        """callback(nomes) é chamado sempre que os padrões forem editados no Gerenciar Padrões."""
+        self.padrao_view.ao_atualizar = lambda lista: callback([item["nome"] for item in lista])

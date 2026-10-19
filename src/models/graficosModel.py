@@ -14,6 +14,9 @@ FONTE = ["Segoe UI", "DejaVu Sans"]
 MAX_FATIAS = 10  # nas pizzas, o excedente (os menores) vira "Outros"; nas barras aparecem todos
 
 TIPOS = {"anel": "Anel", "pizza": "Pizza", "pizza3d": "Pizza 3D", "barras": "Barras"}
+# o que os gráficos dividem: a concentração ou a área normalizada (para quem não tem concentração)
+BASES = {"concentracao": "Concentração", "area": "Área normalizada"}
+UNIDADE_DA_BASE = {"concentracao": "mg/kg", "area": "CPS"}
 
 # Cada elemento tem cor fixa (models/coresElementosModel.py). "neutro" = (Traço, Outros): agrupamentos
 # ficam em cinza, nunca numa cor de elemento.
@@ -61,11 +64,34 @@ class GraficosModel:
         """Nomes das amostras de um ResultadoPadrao, na ordem da tabela."""
         return [nome for bloco in resultado_padrao.concentracoes.values() for nome in bloco]
 
-    def valores_da_amostra(self, resultado_padrao, amostra):
+    @staticmethod
+    def areas_por_elemento(areas):
+        """
+        {(elemento, energia): área normalizada} -> {elemento: área}, para quem não tem concentração.
+        Fica a linha mais intensa de cada elemento (média de áreas de linhas diferentes não tem sentido físico).
+        O Ar fica de fora: é a referência da normalização e vem do ar, não da amostra.
+        """
+        por_elemento = {}
+        for chave, area in areas.items():
+            elemento = chave[0] if isinstance(chave, tuple) else chave
+            if elemento in (None, "Ar"):
+                continue
+            por_elemento[elemento] = max(por_elemento.get(elemento, float("-inf")), float(area))
+        return {elemento: v for elemento, v in por_elemento.items() if v > 0}
+
+    def valores_da_amostra(self, resultado_padrao, amostra, base="concentracao"):
+        """base: "concentracao" (mg/kg) ou "area" (área normalizada, CPS)."""
+        if base == "area":
+            return self.areas_por_elemento(resultado_padrao.areas_normalizadas.get(amostra, {}))
         for bloco in resultado_padrao.concentracoes.values():
             if amostra in bloco:
                 return self.valores_em_mg_kg(bloco[amostra], resultado_padrao.unidade_padrao)
         return {}
+
+    @staticmethod
+    def chave_traco(amostra, base="concentracao"):
+        """Onde fica a escolha do slider: cada base tem a sua (o número de elementos é diferente)."""
+        return amostra if base == "concentracao" else (base, amostra)
 
     @staticmethod
     def max_traco(valores):
@@ -97,14 +123,15 @@ class GraficosModel:
                 melhor, menor_distancia = n, distancia
         return melhor
 
-    def n_traco_da_amostra(self, resultado_padrao, amostra, valores, automatico):
+    def n_traco_da_amostra(self, resultado_padrao, amostra, valores, automatico, base="concentracao"):
         """
         Quantos elementos vão para o traço nessa amostra: o automático (~5%) se a caixinha estiver marcada;
         senão o que foi escolhido no slider (ou o automático, se o slider ainda não foi mexido).
         """
-        if automatico or amostra not in resultado_padrao.graficos_traco:
+        chave = self.chave_traco(amostra, base)
+        if automatico or chave not in resultado_padrao.graficos_traco:
             return self.n_traco_automatico(valores)
-        return min(resultado_padrao.graficos_traco[amostra], self.max_traco(valores))
+        return min(resultado_padrao.graficos_traco[chave], self.max_traco(valores))
 
     @staticmethod
     def fracao_traco(valores, traco):
@@ -165,8 +192,8 @@ class GraficosModel:
         ax.set_ylim(-1.08 - profundidade, 1.08)
         ax.set_aspect(0.55)  # inclinação
 
-    def _barras(self, figura, fatias, legenda_nota, t):
-        """Barras horizontais, do maior para o menor, com % e mg/kg na ponta de cada barra."""
+    def _barras(self, figura, fatias, legenda_nota, t, unidade="mg/kg"):
+        """Barras horizontais, do maior para o menor, com % e o valor (mg/kg ou CPS) na ponta de cada barra."""
         ax = figura.add_axes([0.16, 0.06, 0.8, 0.72])
         ax.set_facecolor(t["fundo"])
         total = sum(v for _, v, _ in fatias)
@@ -175,7 +202,7 @@ class GraficosModel:
         ax.barh(posicoes, percentuais, height=0.62, color=[c for _, _, c in fatias])
         maior = max(percentuais)
         for y, p, (_, valor, _) in zip(posicoes, percentuais, fatias):
-            ax.text(p + maior * 0.015, y, f"{self.formatar_percentual(p / 100)}   {self.formatar_concentracao(valor)} mg/kg",
+            ax.text(p + maior * 0.015, y, f"{self.formatar_percentual(p / 100)}   {self.formatar_concentracao(valor)} {unidade}",
                     va="center", ha="left", fontsize=9, color=t["tinta2"], fontfamily=FONTE)
         ax.set_yticks(posicoes, [r for r, _, _ in fatias], fontsize=10, color=t["tinta"], fontfamily=FONTE)
         ax.tick_params(axis="y", length=0, pad=8)
@@ -189,11 +216,11 @@ class GraficosModel:
             figura.text(0.96, 0.02, legenda_nota, ha="right", va="bottom", fontsize=8, color=t["apagado"],
                         fontfamily=FONTE)
 
-    def _desenhar(self, figura, fatias, titulo, subtitulo, centro, legenda_nota, tema, tipo="anel"):
+    def _desenhar(self, figura, fatias, titulo, subtitulo, centro, legenda_nota, tema, tipo="anel", unidade="mg/kg"):
         t = TEMAS[tema]
         self._cabecalho(figura, titulo, subtitulo, t)
         if tipo == "barras":
-            self._barras(figura, fatias, legenda_nota, t)
+            self._barras(figura, fatias, legenda_nota, t, unidade)
             return
 
         grade = figura.add_gridspec(1, 2, width_ratios=[1, 1.05], left=0.03, right=0.97, top=0.8, bottom=0.04,
@@ -221,7 +248,7 @@ class GraficosModel:
                         fontfamily=FONTE)
             ax.set_aspect("equal")
 
-        # legenda em forma de tabela: elemento | % | mg/kg (texto na cor da tinta, a cor fica só no quadrado)
+        # legenda em forma de tabela: elemento | % | valor (texto na cor da tinta, a cor fica só no quadrado)
         leg = figura.add_subplot(grade[1])
         leg.axis("off")
         leg.set_xlim(0, 1)
@@ -229,7 +256,7 @@ class GraficosModel:
         total = sum(v for _, v, _ in fatias)
         passo = min(0.1, 0.86 / (len(fatias) + 1))
         y = 0.5 + passo * (len(fatias) + 1) / 2 - passo / 2
-        for x, texto, alinhamento in ((0.1, "Elemento", "left"), (0.66, "%", "right"), (1.0, "mg/kg", "right")):
+        for x, texto, alinhamento in ((0.1, "Elemento", "left"), (0.66, "%", "right"), (1.0, unidade, "right")):
             leg.text(x, y, texto, ha=alinhamento, va="center", fontsize=8, color=t["apagado"], fontfamily=FONTE)
         leg.plot([0, 1], [y - passo / 2] * 2, color=t["linha"], linewidth=0.8)
         for rotulo, valor, cor in fatias:
@@ -250,13 +277,15 @@ class GraficosModel:
         self._cabecalho(figura, titulo, "", t)
         figura.text(0.5, 0.45, texto, ha="center", va="center", fontsize=10, color=t["apagado"], fontfamily=FONTE)
 
-    def criar_figuras(self, amostra, valores, n_traco, tema="claro", padrao=None, tipo="anel"):
+    def criar_figuras(self, amostra, valores, n_traco, tema="claro", padrao=None, tipo="anel", base="concentracao"):
         """
         Figuras do majoritário e do traço (as mesmas da tela e da exportação).
         tema: "escuro" na janela do programa, "claro" (fundo branco) nas imagens exportadas.
-        tipo: uma das chaves de TIPOS.
+        tipo: uma das chaves de TIPOS; base: uma das chaves de BASES.
         """
         tipo = tipo if tipo in TIPOS else "anel"
+        unidade = UNIDADE_DA_BASE.get(base, "mg/kg")
+        medida = "das áreas normalizadas (CPS)" if base == "area" else "das concentrações (mg/kg)"
         limite = None if tipo == "barras" else MAX_FATIAS  # barras têm espaço para todos os elementos
         majoritarios, traco = self.dividir(valores, n_traco)
         fracao = self.fracao_traco(valores, traco)
@@ -268,7 +297,7 @@ class GraficosModel:
         centro = (self.formatar_percentual(fracao), "no traço") if traco else (str(len(majoritarios)), "elementos")
         nota = f"Outros: {', '.join(outros)}" if outros else ""
         self._desenhar(fig_maj, fatias, f"{amostra} · Majoritário",
-                       f"% da soma das concentrações (mg/kg){complemento}", centro, nota, tema, tipo)
+                       f"% da soma {medida}{complemento}", centro, nota, tema, tipo, unidade)
 
         fig_traco = Figure(figsize=(6.4, 3.6))
         if traco:
@@ -276,7 +305,8 @@ class GraficosModel:
             nota = f"Outros: {', '.join(outros)}" if outros else ""
             self._desenhar(fig_traco, fatias, f"{amostra} · Traço",
                            f"% dentro do traço, que é {self.formatar_percentual(fracao)} do total{complemento}",
-                           (str(len(traco)), "elemento" if len(traco) == 1 else "elementos"), nota, tema, tipo)
+                           (str(len(traco)), "elemento" if len(traco) == 1 else "elementos"), nota, tema, tipo,
+                           unidade)
         else:
             self._vazio(fig_traco, f"{amostra} · Traço", "Nenhum elemento no traço.\nUse o slider para mover elementos.",
                         tema)
@@ -286,23 +316,27 @@ class GraficosModel:
     def _nome_arquivo(texto):
         return re.sub(r'[\\/:*?"<>|]+', "_", str(texto)).strip() or "grafico"
 
-    def exportar(self, pasta, itens, tipo="anel"):
+    def exportar(self, pasta, itens, tipo="anel", base="concentracao"):
         """
         itens: [(subpasta ou None, amostra, valores, n_traco, padrão ou None)].
         Grava "<amostra> - majoritario.png" e, se houver traço, "<amostra> - traco.png" (tema claro, fundo branco).
+        Com a área normalizada, os nomes ganham " - area" (para não sobrescrever os de concentração).
         Devolve os caminhos.
         """
+        sufixo = " - area" if base == "area" else ""
         gravados = []
         for subpasta, amostra, valores, n_traco, *padrao in itens:
             if not valores:
                 continue
             destino = os.path.join(pasta, self._nome_arquivo(subpasta)) if subpasta else pasta
             os.makedirs(destino, exist_ok=True)
-            fig_maj, fig_traco = self.criar_figuras(amostra, valores, n_traco, "claro", (padrao or [None])[0], tipo)
-            base = os.path.join(destino, self._nome_arquivo(amostra))
-            arquivos = [(fig_maj, f"{base} - majoritario.png")]
+            fig_maj, fig_traco = self.criar_figuras(
+                amostra, valores, n_traco, "claro", (padrao or [None])[0], tipo, base
+            )
+            prefixo = os.path.join(destino, self._nome_arquivo(amostra) + sufixo)
+            arquivos = [(fig_maj, f"{prefixo} - majoritario.png")]
             if self.dividir(valores, n_traco)[1]:
-                arquivos.append((fig_traco, f"{base} - traco.png"))
+                arquivos.append((fig_traco, f"{prefixo} - traco.png"))
             for figura, caminho in arquivos:
                 figura.savefig(caminho, dpi=200, facecolor=figura.get_facecolor())
                 gravados.append(caminho)

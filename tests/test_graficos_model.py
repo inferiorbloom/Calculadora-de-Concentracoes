@@ -75,6 +75,36 @@ class GraficosModelTests(unittest.TestCase):
         ]))
 
 
+class AreaNormalizadaTests(unittest.TestCase):
+    def setUp(self):
+        self.model = GraficosModel()
+        self.r = _resultado()
+        self.r.areas_normalizadas = {"a": {
+            ("Ar", 2.957): 9000.0,  # referência da normalização: fica de fora
+            ("K", 3.313): 500.0,
+            ("Ag", 22.103): 40.0, ("Ag", 2.984): 120.0,  # duas linhas: fica a mais intensa
+            ("Zr", 15.7): 80.0,  # sem certificado, sem concentração, mas com área
+            ("Cu", 8.04): -3.0,
+        }}
+
+    def test_usa_a_linha_mais_intensa_e_ignora_ar(self):
+        self.assertEqual(self.model.valores_da_amostra(self.r, "a", "area"), {"K": 500.0, "Ag": 120.0, "Zr": 80.0})
+
+    def test_slider_guarda_escolha_separada_por_base(self):
+        conc = self.model.valores_da_amostra(self.r, "a")
+        area = self.model.valores_da_amostra(self.r, "a", "area")
+        self.r.graficos_traco[self.model.chave_traco("a", "area")] = 2
+        self.assertEqual(self.model.n_traco_da_amostra(self.r, "a", area, False, "area"), 2)
+        self.assertEqual(self.model.n_traco_da_amostra(self.r, "a", conc, False), self.model.n_traco_automatico(conc))
+
+    def test_exportar_area_nao_sobrescreve_concentracao(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            area = self.model.valores_da_amostra(self.r, "a", "area")
+            gravados = self.model.exportar(pasta, [(None, "a", area, 1)], "barras", "area")
+        self.assertEqual(sorted(os.path.basename(g) for g in gravados),
+                         ["a - area - majoritario.png", "a - area - traco.png"])
+
+
 class CoresETiposTests(unittest.TestCase):
     def setUp(self):
         self.model = GraficosModel()

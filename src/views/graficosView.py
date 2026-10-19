@@ -2,7 +2,7 @@ import customtkinter as ctk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from PIL import Image
 
-from models.graficosModel import TEMAS, TIPOS
+from models.graficosModel import BASES, TEMAS, TIPOS
 from resource_utils import resource_path
 
 # Configurações iniciais do customtkinter
@@ -91,6 +91,14 @@ class GraficosJanela(ctk.CTkToplevel):
         self.label_slider = ctk.CTkLabel(linha_slider, text="", font=("Arial", 13))
         self.label_slider.pack(side="left", padx=10)
 
+        # concentração ou área normalizada (para quem analisa algo sem concentração calculada)
+        self.seletor_base = ctk.CTkSegmentedButton(
+            linha_slider, values=list(BASES.values()), command=self._trocar_base, font=("Arial", 12),
+        )
+        self.seletor_base.set(BASES[self.estado.get("base", "concentracao")])
+        self.seletor_base.pack(side="right")
+        ctk.CTkLabel(linha_slider, text="Base:", font=("Arial", 13, "bold")).pack(side="right", padx=(0, 6))
+
         # --- gráficos ---
         self.frame_graficos = ctk.CTkFrame(self, fg_color=TEMAS["escuro"]["fundo"])
         self.frame_graficos.grid(row=2, column=0, sticky="nsew", padx=10)
@@ -142,20 +150,26 @@ class GraficosJanela(ctk.CTkToplevel):
         self.estado["automatico"] = self.var_automatico.get()
         self._atualizar()
 
+    def _trocar_base(self, nome):
+        self.estado["base"] = next(chave for chave, rotulo in BASES.items() if rotulo == nome)
+        self._atualizar()
+
     def _mover_slider(self, valor):
         amostra = self.combo_amostra.get()
+        chave = self.model.chave_traco(amostra, self.estado.get("base", "concentracao"))
         n = int(round(valor))
-        if self.resultado.graficos_traco.get(amostra) == n:
+        if self.resultado.graficos_traco.get(chave) == n:
             return
-        self.resultado.graficos_traco[amostra] = n
+        self.resultado.graficos_traco[chave] = n
         self._desenhar(amostra, n)
 
     def _atualizar(self):
         """Ajusta o slider à amostra escolhida (cada uma tem o seu número de elementos) e redesenha."""
         amostra = self.combo_amostra.get()
-        self.valores = self.model.valores_da_amostra(self.resultado, amostra) if amostra else {}
+        base = self.estado.get("base", "concentracao")
+        self.valores = self.model.valores_da_amostra(self.resultado, amostra, base) if amostra else {}
         maximo = self.model.max_traco(self.valores)
-        n = self.model.n_traco_da_amostra(self.resultado, amostra, self.valores, self.estado["automatico"])
+        n = self.model.n_traco_da_amostra(self.resultado, amostra, self.valores, self.estado["automatico"], base)
 
         self.slider.configure(to=max(maximo, 1), number_of_steps=max(maximo, 1))
         self.slider.set(n)
@@ -168,7 +182,8 @@ class GraficosJanela(ctk.CTkToplevel):
             canvas.get_tk_widget().destroy()
         self.canvases = []
         if not self.valores:
-            self.label_slider.configure(text="sem concentrações para esta amostra")
+            medida = "áreas" if self.estado.get("base") == "area" else "concentrações"
+            self.label_slider.configure(text=f"sem {medida} para esta amostra")
             return
 
         _, traco = self.model.dividir(self.valores, n)
@@ -177,7 +192,8 @@ class GraficosJanela(ctk.CTkToplevel):
                  f"({self.model.formatar_percentual(self.model.fracao_traco(self.valores, traco))} do total)"
         )
         figuras = self.model.criar_figuras(
-            amostra, self.valores, n, "escuro", self.resultado.nome, self.estado.get("tipo", "anel")
+            amostra, self.valores, n, "escuro", self.resultado.nome, self.estado.get("tipo", "anel"),
+            self.estado.get("base", "concentracao"),
         )
         for coluna, figura in enumerate(figuras):
             canvas = FigureCanvasTkAgg(figura, master=self.frame_graficos)

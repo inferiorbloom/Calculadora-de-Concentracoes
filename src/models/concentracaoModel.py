@@ -80,7 +80,7 @@ class ConcentracaoModel:
                 # aplica normalização na área antes do cálculo
                 area_net_normalizada = pico.area * fator
                 areas_normalizadas[nome][chave] = area_net_normalizada
-                erros_normalizados[nome][chave] = round(pico.erro * fator, 0)
+                erros_normalizados[nome][chave] = pico.erro * fator
 
                 # Calcula concentração apenas se o elemento estiver nos padrões
                 if pico.elemento not in c_padrao or chave not in area_padrao:

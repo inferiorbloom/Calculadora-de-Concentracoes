@@ -20,6 +20,8 @@ class ResultadoPadrao:
     z_score_resultado: dict = field(default_factory=dict)
     sensibilidade_resultado: dict = field(default_factory=dict)
     graficos_traco: dict = field(default_factory=dict)  # amostra -> elementos no traço escolhidos no slider
+    # amostra -> {"majoritario": set, "traco": set}: elementos desmarcados na tabela avançada de cada gráfico
+    graficos_excluidos: dict = field(default_factory=dict)
 
     @property
     def nome_certificado(self):

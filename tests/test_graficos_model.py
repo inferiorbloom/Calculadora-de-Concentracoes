@@ -168,6 +168,41 @@ class CoresETiposTests(unittest.TestCase):
                 for figura in self.model.criar_figuras("a", VALORES, 2, tema, "pd", tipo):
                     figura.canvas.draw()  # quebra aqui se algo no desenho estiver errado
 
+    def test_tabela_avancada_lista_todos_com_grupo_e_erro(self):
+        linhas = self.model.linhas_tabela(VALORES, 2, {"Ca": 1.0, "Cu": 45.0})
+        self.assertEqual([l["elemento"] for l in linhas], ["Ca", "K", "Fe", "Zn", "Cu"])
+        self.assertEqual([l["grupo"] for l in linhas], ["majoritario"] * 3 + ["traco"] * 2)
+        self.assertEqual(linhas[0]["z"], 20)
+        self.assertAlmostEqual(linhas[0]["fracao"], 0.6)
+        self.assertEqual(linhas[-1]["erro"], 45.0)
+        self.assertIsNone(linhas[1]["erro"])
+
+    def test_erro_da_area_vem_da_linha_mais_intensa(self):
+        r = _resultado()
+        r.areas_normalizadas = {"a": {("Fe", 6.4): 1000.0, ("Fe", 7.0): 100.0, ("Ar", 3.0): 50.0}}
+        r.erros_normalizados = {"a": {("Fe", 6.4): 50.0, ("Fe", 7.0): 90.0, ("Ar", 3.0): 5.0}}
+        erros = self.model.erros_area_percentuais(r, "a")
+        self.assertAlmostEqual(erros["Fe"], 5.0)
+
+    def test_desmarcados_saem_so_daquele_grafico(self):
+        excluidos = {"majoritario": {"K", "Cu"}, "traco": {"Zn"}}
+        majoritarios, traco_no_maj, traco = self.model.separar(VALORES, 2, excluidos)
+        self.assertEqual([e for e, _ in majoritarios], ["Ca", "Fe"])
+        self.assertEqual([e for e, _ in traco_no_maj], ["Zn"])  # Cu fica fora da fatia "Traço"
+        self.assertEqual([e for e, _ in traco], ["Cu"])
+        for figura in self.model.criar_figuras("a", VALORES, 2, excluidos=excluidos):
+            figura.canvas.draw()
+
+    def test_selecao_fica_guardada_por_amostra_e_vai_para_a_exportacao(self):
+        r = _resultado()
+        excluidos = self.model.excluidos_da_amostra(r, "a")
+        excluidos["traco"].update({"Zn", "Cu"})
+        self.assertIs(self.model.excluidos_da_amostra(r, "a"), excluidos)
+        with tempfile.TemporaryDirectory() as pasta:
+            gravados = self.model.exportar(pasta, [(None, "a", VALORES, 2, "pd", excluidos)])
+        # todo o traço desmarcado: só a imagem do majoritário
+        self.assertEqual([os.path.basename(c) for c in gravados], ["a - majoritario.png"])
+
 
 if __name__ == "__main__":
     unittest.main()

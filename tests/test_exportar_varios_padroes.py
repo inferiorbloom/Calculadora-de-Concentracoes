@@ -127,16 +127,16 @@ class ExportarVariosPadroesTests(unittest.TestCase):
             model.exportar_para_excel(amostras, [padrao_1, padrao_2], caminho)
             dados = _textos_da_primeira_aba(caminho)
 
-        largura = model.aba_dados.montar(
-            amostras, padrao_1.areas_normalizadas, padrao_1.erros_normalizados, padrao_1.fatores_normalizacao
-        ).shape[1]
+        # cada padrão: "Padrão: ..." na linha 0; cada amostra com o nome em cima e o cabeçalho logo abaixo
+        largura = len(model.aba_dados.CABECALHO)
         self.assertEqual(dados[(0, 0)], f"Padrão: {padrao_1.nome} ({padrao_1.nome_certificado})")
         self.assertEqual(dados[(0, largura + 1)], f"Padrão: {padrao_2.nome} ({padrao_2.nome_certificado})")
         self.assertFalse([c for c in dados if c[1] == largura])  # coluna separadora vazia
         amostra = os.path.splitext(os.path.basename(amostras[0]))[0]
-        self.assertEqual(dados[(1, 0)], amostra)
-        self.assertEqual(dados[(1, largura + 1)], amostra)
-        self.assertEqual(dados[(2, largura + 1)], "Elemento")
+        for coluna in (0, largura + 1):
+            self.assertEqual(dados[(2, coluna)], amostra)
+            self.assertEqual(dados[(2, coluna + largura - 2)], "Normalização:")
+            self.assertEqual(dados[(3, coluna)], "Elemento")
 
     def test_sld_dos_padroes_em_colunas_na_mesma_tabela(self):
         padroes = _padroes_certificados()

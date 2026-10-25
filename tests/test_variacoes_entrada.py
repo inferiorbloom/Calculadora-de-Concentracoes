@@ -129,6 +129,25 @@ class ConcentracaoVariacoesTests(_ComArquivos):
         self.assertIn(("K", 3.313), conc["concentracao1"]["amostra"])
         self.assertTrue(any("Z = 99" in a for a in avisos))
 
+    def test_normalizar_sem_calcular_da_as_mesmas_areas_do_calcular(self):
+        amostra = self.arquivo("amostra.txt", CABECALHO + PICOS.replace("70698", "35349"))
+        padrao = self.arquivo("padrao.txt", CABECALHO + PICOS)
+        calculado = ConcentracaoModel().calcular_concentracoes([amostra], padrao, CERTIFICADO)
+        normalizado = ConcentracaoModel().normalizar_sem_calcular([amostra], padrao)
+        self.assertEqual(normalizado, calculado[1:])
+
+    def test_graficos_sem_calcular_usam_as_amostras_normalizadas(self):
+        from models.resultadoPadraoModel import ResultadoPadrao
+
+        amostra = self.arquivo("amostra.txt", CABECALHO + PICOS)
+        padrao = self.arquivo("padrao.txt", CABECALHO + PICOS)
+        normalizado = ConcentracaoModel().normalizar_sem_calcular([amostra], padrao)
+        r = ResultadoPadrao("padrao", "padrao.txt", {}, {}, *normalizado)
+        model = GraficosModel()
+        self.assertEqual(model.amostras(r), ["amostra"])
+        self.assertIn("K", model.valores_da_amostra(r, "amostra", "area"))
+        self.assertEqual(model.valores_da_amostra(r, "amostra"), {})
+
 
 class OutrasEntradasTests(unittest.TestCase):
     def test_tempo_com_virgula(self):

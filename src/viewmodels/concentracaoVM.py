@@ -47,6 +47,10 @@ class ConcentracaoVM:
         self.padroes_marcados = []  # [(caminho do arquivo padrão, nome do padrão certificado)]
         self.arquivos_amostras = self.variaveis.lista_arquivos
         self.resultados_por_padrao = []
+        # o que os gráficos mostram: os calculados ou, antes do Calcular, só as áreas normalizadas
+        self.resultados_graficos = []
+        self._selecao_calculada = None  # seleção da lista usada no último Calcular
+        self._selecao_graficos = None  # e na última normalização para os gráficos
 
         # Chama os arquivos de service
         self.service = Service(sidebar_frame)
@@ -88,7 +92,8 @@ class ConcentracaoVM:
         self.export = ExportarVM(self.caixa_saidas, self.variaveis, nome_planilha)
 
         # Chama os Graficos
-        self.graficos = GraficosVM(self.caixa_saidas, self.variaveis, alvo)  # o alvo do tubo fica fora dos gráficos
+        # o alvo do tubo fica fora dos gráficos
+        self.graficos = GraficosVM(self.caixa_saidas, self.variaveis, alvo, obter_resultados=self._resultados_graficos)
 
         # Comparar padrões: os mesmos elementos calculados com cada padrão (precisa de 2 ou mais)
         self.comparar_padroes = CompararPadroesVM(
@@ -194,6 +199,53 @@ class ConcentracaoVM:
             and all(self.padrao_vm.buscar_padrao(nome) for _, nome in self.padroes_marcados)
         )
         self.view.calcular.configure(state="normal" if pronto else "disabled")
+        # os gráficos pela área normalizada só precisam do arquivo padrão (o Ar dele), não do padrão certificado
+        self.graficos.habilita_graficos(bool(self.arquivos_amostras and self.padroes_marcados))
+
+    def _selecao(self):
+        return tuple(self.arquivos_amostras), tuple(self.padroes_marcados)
+
+    def _herdar_escolhas(self, novos):
+        """Slider e elementos desmarcados nos gráficos passam para os resultados novos do mesmo arquivo padrão."""
+        antigos = {r.arquivo_padrao: r for r in self.resultados_graficos}
+        for r in novos:
+            antigo = antigos.get(r.arquivo_padrao)
+            if antigo is not None and antigo is not r:
+                r.graficos_traco = antigo.graficos_traco
+                r.graficos_excluidos = antigo.graficos_excluidos
+        self.resultados_graficos = novos
+
+    def _resultados_graficos(self):
+        """
+        Os ResultadoPadrao dos gráficos: os do Calcular, se a seleção da lista não mudou desde então;
+        senão, só a normalização (áreas pelo Ar de cada arquivo padrão, sem concentração).
+        """
+        selecao = self._selecao()
+        if self.resultados_por_padrao and self._selecao_calculada == selecao:
+            return list(self.resultados_por_padrao)
+        if self.resultados_graficos and self._selecao_graficos == selecao:
+            return list(self.resultados_graficos)
+
+        novos, avisos = [], []
+        try:
+            for arquivo_padrao, nome_certificado in self.padroes_marcados:
+                nome = self._nome_unico(arquivo_padrao, {r.nome for r in novos})
+                normalizado = self.model.normalizar_sem_calcular(self.arquivos_amostras, arquivo_padrao)
+                avisos += [a for a in self.model.avisos if a not in avisos]
+                c_padrao = (self.padrao_vm.buscar_padrao(nome_certificado) if nome_certificado else None) or {}
+                novos.append(ResultadoPadrao(nome, arquivo_padrao, c_padrao, {}, *normalizado))
+        except ArquivoInvalidoError as erro:
+            messagebox.showerror("Arquivo inválido", str(erro))
+            return []
+        except Exception as erro:
+            messagebox.showerror("Erro na normalização", mensagem_erro_inesperado(erro))
+            return []
+
+        if avisos:
+            messagebox.showwarning("Atenção", "\n\n".join(f"• {a}" for a in avisos))
+        self._herdar_escolhas(novos)
+        self._selecao_graficos = selecao
+        return list(novos)
 
     @staticmethod
     def _nome_unico(caminho, usados):
@@ -270,6 +322,8 @@ class ConcentracaoVM:
             return None
 
         self.resultados_por_padrao = resultados_por_padrao
+        self._herdar_escolhas(resultados_por_padrao)
+        self._selecao_calculada = self._selecao_graficos = self._selecao()
 
         # Atualiza Variaveis global
         self.variaveis.lista_arquivos = self.arquivos_amostras

@@ -10,11 +10,10 @@ from viewmodels.concentracaoVM import ConcentracaoVM
 from viewmodels.exportarVM import ExportarTodosVM
 from viewmodels.multivariadaVM import MultivariadaVM
 from views.abasLateraisView import ALVOS, AbasLateraisView
+from views import tema
 
-ctk.set_appearance_mode("dark")
-ctk.set_default_color_theme("dark-blue")
 
-TITULO = "🧪 Calculadora de Concentrações"
+TITULO = "CX Rays · Calculadora de Concentrações"
 
 
 class TelaAlvo(ctk.CTkFrame):
@@ -27,32 +26,44 @@ class TelaAlvo(ctk.CTkFrame):
         super().__init__(master, fg_color="transparent")
         self.alvo = alvo
 
-        # --- SIDEBAR (menu deste alvo) ---
-        self.sidebar = ctk.CTkFrame(self, width=220)
+        # --- SIDEBAR (menu deste alvo): título e as seções Entrada, Cálculo e Saídas ---
+        self.sidebar = ctk.CTkFrame(self, width=236, fg_color=tema.MENU, corner_radius=0)
         self.sidebar.pack(side="left", fill="y")
+        ctk.CTkFrame(self, width=1, fg_color=tema.BORDA_SUAVE, corner_radius=0).pack(side="left", fill="y")
 
         # --- MAIN AREA ---
-        self.main_frame = ctk.CTkFrame(self, corner_radius=10)
-        self.main_frame.pack(side="right", fill="both", expand=True, padx=20, pady=20)
+        self.main_frame = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0)
+        self.main_frame.pack(side="right", fill="both", expand=True)
 
         # --- Frame dinâmico (conteúdo que muda) ---
-        self.dynamic_frame = ctk.CTkFrame(self.main_frame)
-        self.dynamic_frame.pack(fill="both", expand=True, pady=10, padx=40)
+        self.dynamic_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        self.dynamic_frame.pack(fill="both", expand=True, pady=18, padx=20)
 
-        ctk.CTkLabel(self.sidebar, text=f"☰ Menu · {alvo}", font=("Arial Black", 18, "bold")).pack(pady=20)
+        nome_alvo = ALVOS.get(alvo, (alvo, "", None))[1]
+        ctk.CTkLabel(self.sidebar, text=f"Alvo {alvo}", font=tema.fonte(18, "bold"), anchor="w").pack(
+            fill="x", padx=16, pady=(20, 0)
+        )
+        ctk.CTkLabel(self.sidebar, text=nome_alvo, font=tema.fonte(12), text_color=tema.TEXTO_2, anchor="w").pack(
+            fill="x", padx=16, pady=(0, 16)
+        )
 
         # Configuração: uma coluna; os resultados ocupam o espaço que sobra
         self.dynamic_frame.grid_columnconfigure(0, weight=1)
         self.dynamic_frame.grid_rowconfigure(0, weight=0)
         self.dynamic_frame.grid_rowconfigure(1, weight=1)
 
-        # --- Linha 1: Arquivos (marcação de Padrão e Amostras) ---
-        self.arquivos_frame = ctk.CTkFrame(self.dynamic_frame, fg_color="#2b2b2b")
-        self.arquivos_frame.grid(row=0, column=0, sticky="we", padx=10, pady=(10, 5))
+        # --- Linha 1: Arquivos (marcação de Padrão e Amostras), num cartão ---
+        self.arquivos_frame = ctk.CTkFrame(
+            self.dynamic_frame, fg_color=tema.SUPERFICIE, corner_radius=12, border_width=1, border_color=tema.BORDA_SUAVE,
+        )
+        self.arquivos_frame.grid(row=0, column=0, sticky="we", pady=(0, 14))
 
-        # --- Linha 2: Resultados ---
-        self.result_frame = ctk.CTkFrame(self.dynamic_frame, height=250)
-        self.result_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=(5, 10))
+        # --- Linha 2: Resultados, em outro cartão ---
+        self.result_frame = ctk.CTkFrame(
+            self.dynamic_frame, height=250, fg_color=tema.SUPERFICIE, corner_radius=12, border_width=1,
+            border_color=tema.BORDA_SUAVE,
+        )
+        self.result_frame.grid(row=1, column=0, sticky="nsew")
         self.result_frame.grid_propagate(False)
 
         # --- Instância da ViewModel ---
@@ -69,7 +80,9 @@ class TelaAlvo(ctk.CTkFrame):
 
 class MainView(ctk.CTk):
     def __init__(self):
+        tema.aplicar()  # antes de qualquer widget: as cores e a fonte padrão vêm do tema
         super().__init__()
+        tema.aplicar_icone(self)
 
         # o .exe não tem console: erro em qualquer botão vira mensagem na tela (e vai para o log)
         self.report_callback_exception = self._mostrar_erro

@@ -1,7 +1,8 @@
 import customtkinter as ctk
+from views import tema
 
-COR_APAGADA = "#898781"
-COR_AVISO = "#FFB86B"
+COR_APAGADA = tema.APAGADO
+COR_AVISO = tema.ATENCAO
 
 
 class NomesAmostrasDialog(ctk.CTkToplevel):
@@ -15,13 +16,14 @@ class NomesAmostrasDialog(ctk.CTkToplevel):
 
     def __init__(self, master, titulo, linhas, extras, ao_salvar):
         super().__init__(master)
+        tema.aplicar_icone(self)
         self.title("Nomes das amostras")
         self.geometry("760x560")
         self.minsize(560, 300)
         self.ao_salvar = ao_salvar
         self.entradas = {}  # código -> CTkEntry
 
-        ctk.CTkLabel(self, text=titulo, font=("Arial", 14, "bold"), anchor="w", justify="left").pack(
+        ctk.CTkLabel(self, text=titulo, font=tema.fonte(14, "bold"), anchor="w", justify="left").pack(
             fill="x", padx=20, pady=(15, 2)
         )
         sem_nome = sum(1 for _, nome, _ in linhas if not nome)
@@ -30,20 +32,20 @@ class NomesAmostrasDialog(ctk.CTkToplevel):
             resumo += " Os que não estão na ficha ficam destacados: dá para digitar o nome aqui."
         ctk.CTkLabel(
             self, text=resumo + "\nO código continua sendo o identificador; o nome aparece ao lado dele.",
-            font=("Arial", 12), text_color=COR_APAGADA, anchor="w", justify="left",
+            font=tema.fonte(12), text_color=COR_APAGADA, anchor="w", justify="left",
         ).pack(fill="x", padx=20, pady=(0, 10))
 
         botoes = ctk.CTkFrame(self, fg_color="transparent")
         botoes.pack(side="bottom", fill="x", padx=20, pady=15)
-        ctk.CTkButton(botoes, text="Salvar", width=110, fg_color="#0D740F", command=self._salvar).pack(side="right")
+        ctk.CTkButton(botoes, text="Salvar", width=110, command=self._salvar, **tema.BOTAO_PRINCIPAL).pack(side="right")
         ctk.CTkButton(
-            botoes, text="Cancelar", width=110, fg_color="#555555", hover_color="#666666", command=self.destroy,
+            botoes, text="Cancelar", width=110, command=self.destroy, **tema.BOTAO_SECUNDARIO,
         ).pack(side="right", padx=(0, 8))
         ctk.CTkButton(
-            botoes, text="Apagar todos", width=110, fg_color="#8B1E1E", hover_color="#B22222", command=self._apagar,
+            botoes, text="Apagar todos", width=110, fg_color=tema.ERRO_FUNDO, hover_color=tema.ERRO_HOVER, command=self._apagar,
         ).pack(side="left")
 
-        lista = ctk.CTkScrollableFrame(self, fg_color="#2b2b2b")
+        lista = ctk.CTkScrollableFrame(self, fg_color=tema.SUPERFICIE)
         lista.pack(fill="both", expand=True, padx=20)
         lista.grid_columnconfigure(2, weight=1)
 
@@ -51,7 +53,7 @@ class NomesAmostrasDialog(ctk.CTkToplevel):
         for texto, itens in (("Arquivos da lista", linhas), ("Na ficha, mas fora da lista de arquivos", extras)):
             if not itens:
                 continue
-            ctk.CTkLabel(lista, text=texto, font=("Arial", 12, "bold"), text_color=COR_APAGADA, anchor="w").grid(
+            ctk.CTkLabel(lista, text=texto, font=tema.fonte(12, "bold"), text_color=COR_APAGADA, anchor="w").grid(
                 row=linha, column=0, columnspan=3, padx=10, pady=(8, 2), sticky="w"
             )
             linha += 1
@@ -61,7 +63,7 @@ class NomesAmostrasDialog(ctk.CTkToplevel):
 
         if not linhas and not extras:
             ctk.CTkLabel(
-                lista, text="Nenhum arquivo na lista e nenhuma ficha lida.", font=("Arial", 13),
+                lista, text="Nenhum arquivo na lista e nenhuma ficha lida.", font=tema.fonte(13),
             ).grid(row=0, column=0, padx=10, pady=10, sticky="w")
 
         # janela modal, por cima da principal
@@ -72,7 +74,7 @@ class NomesAmostrasDialog(ctk.CTkToplevel):
         ctk.CTkLabel(lista, text=codigo, font=("Consolas", 13), width=90, anchor="w").grid(
             row=linha, column=0, padx=(10, 6), pady=3, sticky="w"
         )
-        entrada = ctk.CTkEntry(lista, width=200, font=("Arial", 12), placeholder_text="sem nome")
+        entrada = ctk.CTkEntry(lista, width=200, font=tema.fonte(12), placeholder_text="sem nome")
         if nome:
             entrada.insert(0, nome)
         elif texto_ficha is None:
@@ -84,7 +86,7 @@ class NomesAmostrasDialog(ctk.CTkToplevel):
             ficha, cor = "não encontrado na ficha", COR_AVISO
         else:
             ficha, cor = (f"ficha: {texto_ficha}" if texto_ficha else ""), COR_APAGADA
-        ctk.CTkLabel(lista, text=ficha, font=("Arial", 11), text_color=cor, anchor="w").grid(
+        ctk.CTkLabel(lista, text=ficha, font=tema.fonte(11), text_color=cor, anchor="w").grid(
             row=linha, column=2, padx=(6, 10), pady=3, sticky="w"
         )
 

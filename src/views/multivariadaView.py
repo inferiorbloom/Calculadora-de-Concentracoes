@@ -4,6 +4,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from models.graficosModel import TEMAS
 from models.multivariadaModel import MODOS_ABAIXO_LD, REFERENCIAS
 from views.componentesView import SeletorFormato
+from views import tema
 
 ABAS = {"biplot": "Biplot (PCA)", "correlacao": "Correlação (ρp)", "hca": "Agrupamento (HCA)", "dados": "Dados usados"}
 
@@ -18,6 +19,7 @@ class MultivariadaJanela(ctk.CTkToplevel):
 
     def __init__(self, master, opcoes, calcular, figura, ao_exportar_imagens, ao_exportar_excel):
         super().__init__(master)
+        tema.aplicar_icone(self)
         self.title("Análise multivariada")
         self.opcoes = opcoes
         self.calcular = calcular
@@ -34,26 +36,26 @@ class MultivariadaJanela(ctk.CTkToplevel):
 
         topo = ctk.CTkFrame(self, fg_color="transparent")
         topo.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 0))
-        ctk.CTkLabel(topo, text="Alvo:", font=("Arial", 13, "bold")).pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(topo, text="Alvo:", font=tema.fonte(13, "bold")).pack(side="left", padx=(0, 6))
         self.combo_alvo = ctk.CTkComboBox(
             topo, values=list(opcoes), width=90, state="readonly", command=lambda _a: self._trocar_alvo(),
         )
         self.combo_alvo.pack(side="left", padx=(0, 16))
-        ctk.CTkLabel(topo, text="Padrão:", font=("Arial", 13, "bold")).pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(topo, text="Padrão:", font=tema.fonte(13, "bold")).pack(side="left", padx=(0, 6))
         self.combo_padrao = ctk.CTkComboBox(
             topo, values=[], width=280, state="readonly", command=lambda _p: self._atualizar(),
         )
         self.combo_padrao.pack(side="left", padx=(0, 16))
-        ctk.CTkLabel(topo, text="Abaixo do LD:", font=("Arial", 13, "bold")).pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(topo, text="Abaixo do LD:", font=tema.fonte(13, "bold")).pack(side="left", padx=(0, 6))
         self.seletor_ld = ctk.CTkSegmentedButton(
-            topo, values=list(MODOS_ABAIXO_LD.values()), command=lambda _m: self._atualizar(), font=("Arial", 12),
+            topo, values=list(MODOS_ABAIXO_LD.values()), command=lambda _m: self._atualizar(), font=tema.fonte(12),
         )
         self.seletor_ld.set(MODOS_ABAIXO_LD["medido"])
         self.seletor_ld.pack(side="left")
         ctk.CTkButton(topo, text="Referências", width=110, command=self._referencias).pack(side="right")
 
         self.seletor_aba = ctk.CTkSegmentedButton(
-            self, values=list(ABAS.values()), command=lambda _a: self._mostrar(), font=("Arial", 12),
+            self, values=list(ABAS.values()), command=lambda _a: self._mostrar(), font=tema.fonte(12),
         )
         self.seletor_aba.set(ABAS["biplot"])
         self.seletor_aba.grid(row=1, column=0, pady=(10, 6))
@@ -64,13 +66,13 @@ class MultivariadaJanela(ctk.CTkToplevel):
 
         rodape = ctk.CTkFrame(self, fg_color="transparent")
         rodape.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
-        self.mensagem = ctk.CTkLabel(rodape, text="", font=("Arial", 12), text_color="#898781", anchor="w",
+        self.mensagem = ctk.CTkLabel(rodape, text="", font=tema.fonte(12), text_color=tema.APAGADO, anchor="w",
                                      justify="left", wraplength=640)
         self.mensagem.pack(side="left", fill="x", expand=True)
         self.botoes = [
             ctk.CTkButton(rodape, text="Exportar Excel", width=130, command=lambda: ao_exportar_excel(self)),
-            ctk.CTkButton(rodape, text="Exportar imagens", width=150, fg_color="#0D740F",
-                          command=lambda: ao_exportar_imagens(self)),
+            ctk.CTkButton(rodape, text="Exportar imagens", width=150, command=lambda: ao_exportar_imagens(self),
+                          **tema.BOTAO_PRINCIPAL),
         ]
         for botao in self.botoes:
             botao.pack(side="right", padx=(8, 0))
@@ -139,7 +141,7 @@ class MultivariadaJanela(ctk.CTkToplevel):
         janela = ctk.CTkToplevel(self)
         janela.title("Referências")
         janela.geometry("820x560")
-        texto = ctk.CTkTextbox(janela, font=("Arial", 13), wrap="word")
+        texto = ctk.CTkTextbox(janela, font=tema.fonte(13), wrap="word")
         texto.pack(fill="both", expand=True, padx=12, pady=12)
         texto.insert("end", "O que foi decidido e com base em quê está no topo de src/models/multivariadaModel.py "
                             "e na aba Referências do Excel exportado.\n\n")

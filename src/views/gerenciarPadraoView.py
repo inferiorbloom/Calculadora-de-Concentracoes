@@ -6,6 +6,7 @@ import winsound
 
 from models.PadraoModel import padroes_semelhantes
 from resource_utils import resource_path
+from views import tema
 
 
 class Gerenciar_PadraoView(ctk.CTkFrame):
@@ -28,16 +29,14 @@ class Gerenciar_PadraoView(ctk.CTkFrame):
 
         self.botao_gerenciar = ctk.CTkButton(
             self.frame,
-            text="",
+            text="Padrões certificados",
             image=icone_gear,
-            width=40,
-            height=30,
-            corner_radius=8,
-            fg_color="#213A57",
+            compound="left",
+            anchor="w",
+            height=36,
             command=self.janela_gerenciar,
+            **tema.BOTAO_SECUNDARIO,
         )
-
-        self.botao_gerenciar.pack(side="right", padx=(0, 20))
 
         # Elementos Al → U
         self.elementos = [
@@ -66,6 +65,8 @@ class Gerenciar_PadraoView(ctk.CTkFrame):
             self.padroes = list(self.variaveis.padroes or [])
 
         self.win = ctk.CTkToplevel()
+
+        tema.aplicar_icone(self.win)
         self.win.title("Gerenciar Padrões")
         self.win.geometry("1000x700")
         self.win.grab_set()
@@ -89,13 +90,13 @@ class Gerenciar_PadraoView(ctk.CTkFrame):
         ctk.CTkLabel(
             frame_lista,
             text="Padrões",
-            font=("Arial Black", 16)
+            font=tema.fonte(16, "bold")
         ).pack(pady=10)
 
         bot_add = ctk.CTkButton(
             frame_lista,
             text="+ Adicionar Novo Padrão",
-            fg_color="#1f6aa5",
+            **tema.BOTAO_SECUNDARIO,
             command=self.adicionar_padrao
         )
         bot_add.pack(pady=(0, 10))
@@ -116,13 +117,12 @@ class Gerenciar_PadraoView(ctk.CTkFrame):
         frame_form.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
 
 
-
         frame_busca = ctk.CTkFrame(frame_form, fg_color="transparent")
         frame_busca.pack(pady=(0,10))
 
         ctk.CTkLabel(
             frame_busca,
-            text="Buscar elemento:", font=("Arial Black", 16)
+            text="Buscar elemento:", font=tema.fonte(16, "bold")
         ).pack(side="left", padx=(0,10),)
 
         self.entry_busca = ctk.CTkEntry(frame_busca, width=150)
@@ -130,14 +130,14 @@ class Gerenciar_PadraoView(ctk.CTkFrame):
 
         self.entry_busca.bind("<KeyRelease>", self.autocomplete_elementos)
 
-        self.lista_sugestoes = ctk.CTkFrame(frame_form, fg_color = "#6d6d6d")
+        self.lista_sugestoes = ctk.CTkFrame(frame_form, fg_color=tema.CONTROLE)
         self.lista_sugestoes.pack(fill="x", padx=20, pady=(0,10))
 
 
         ctk.CTkLabel(
             frame_form,
             text="Editar Padrão",
-            font=("Arial Black", 16)
+            font=tema.fonte(16, "bold")
         ).pack(pady=10)
 
         nome_frame = ctk.CTkFrame(frame_form, fg_color="transparent")
@@ -158,7 +158,7 @@ class Gerenciar_PadraoView(ctk.CTkFrame):
             linha_nome,
             text="Salvar",
             width=80,
-            fg_color="#00992e",
+            **tema.BOTAO_PRINCIPAL,
             command=self.salvar_padroes
         )
         bot_salvar_nome.pack(side="left")
@@ -176,7 +176,7 @@ class Gerenciar_PadraoView(ctk.CTkFrame):
             ctk.CTkLabel(
                 self.scroll,
                 text=h,
-                font=("Arial Black", 13)
+                font=tema.fonte(13, "bold")
             ).grid(row=0, column=col, padx=10, pady=10)
 
         self.entries = {}
@@ -217,7 +217,7 @@ class Gerenciar_PadraoView(ctk.CTkFrame):
         bot_excluir = ctk.CTkButton(
             frame_lista,
             text="Excluir padrão",
-            fg_color="#8B0000",
+            **tema.BOTAO_PERIGO,
             command=self.excluir_padrao
         )
 
@@ -252,10 +252,10 @@ class Gerenciar_PadraoView(ctk.CTkFrame):
 
         # resetar cores
         for bot in self.botoes_padroes.values():
-            bot.configure(fg_color="#2b2b2b")
+            bot.configure(fg_color=tema.CONTROLE)
 
         # destacar selecionado
-        self.botoes_padroes[nome].configure(fg_color="#1f6aa5")
+        self.botoes_padroes[nome].configure(fg_color=tema.SELECIONADA)
 
         # carregar no editor
         self.padrao_selecionado = nome
@@ -379,7 +379,7 @@ class Gerenciar_PadraoView(ctk.CTkFrame):
             bot = ctk.CTkButton(
                 self.frame_lista_padroes,
                 text=nome,
-                fg_color="#2b2b2b",
+                fg_color=tema.SUPERFICIE,
                 anchor="w",
                 command=lambda n=nome: self.selecionar_padrao_lista(n)
             )
@@ -493,7 +493,7 @@ class Gerenciar_PadraoView(ctk.CTkFrame):
             bot = ctk.CTkButton(
                 self.frame_lista_padroes,
                 text=nome,
-                fg_color="#2b2b2b",
+                fg_color=tema.SUPERFICIE,
                 anchor="w",
                 command=lambda n=nome: self.selecionar_padrao_lista(n)
             )

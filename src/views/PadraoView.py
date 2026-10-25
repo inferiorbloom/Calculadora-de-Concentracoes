@@ -1,8 +1,5 @@
 import customtkinter as ctk
-
-# Configurações iniciais do customtkinter
-ctk.set_appearance_mode("dark")
-ctk.set_default_color_theme("dark-blue")
+from views import tema
 
 
 class PadraoView(ctk.CTkFrame):
@@ -16,8 +13,8 @@ class PadraoView(ctk.CTkFrame):
 
         self.frame = frame
 
-        self.label_opcoes = ctk.CTkLabel(self.frame, text="Padrões certificados:", font=("Arial", 14, "bold"))
-        self.label_opcoes.pack(side="left", padx=(20, 10), pady=10)
+        # o próprio botão (do Gerenciar Padrões) já diz "Padrões certificados"
+        self.label_opcoes = ctk.CTkLabel(self.frame, text="Padrões certificados:", font=tema.fonte(13, "bold"))
 
         self.lista_dados = []
         self.ao_atualizar = None  # chamado com a nova lista quando os padrões são editados

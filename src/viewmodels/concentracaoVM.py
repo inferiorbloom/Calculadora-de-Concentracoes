@@ -2,8 +2,15 @@ import json
 import os
 import tkinter.messagebox as messagebox
 import customtkinter as ctk
+from views import tema
 from views.componentesView import JanelaFigura
-from views.concentracaoView import BarraAvisosView, ConcentracaoView, ResultadosPadroesView, ListaArquivosView
+from views.concentracaoView import (
+    BarraAvisosView,
+    ConcentracaoView,
+    ListaArquivosView,
+    ResultadosPadroesView,
+    chave_natural,
+)
 from types import SimpleNamespace
 from tkinter import filedialog
 from models.analiseModel import escolhas_graficos_de_json, escolhas_graficos_para_json
@@ -71,20 +78,20 @@ class ConcentracaoVM:
         # Chama os arquivos de service
         self.service = Service(sidebar_frame)
 
-        # Chama o PadraoVM
-        self.padrao_vm = PadraoVM(sidebar_frame, dynamic_frame, sidebar_frame)
-        self.padrao_vm.padrao_view
-        self.lista_padrao = self.padrao_vm.volta_padrao()
-
         # Chama os calculos de concentracao
         self.model = ConcentracaoModel()
         self.z_score_model = ZScoreModel()
         self.sensibilidade_model = SensibilidadeModel()
 
-        # Chama a view dos botoes de calcular
+        # Chama a view dos botoes de calcular (seções ENTRADA e CÁLCULO do menu)
         self.view = ConcentracaoView(sidebar_frame)
-        self.view.pack(fill="x", padx=10, pady=10)
+        self.view.pack(fill="x", padx=16, pady=(0, 4))
         self.view.tempo_contagem.insert(0, carregar_tempo_contagem())
+
+        # Chama o PadraoVM: o botão "Padrões certificados" fica na seção ENTRADA
+        self.padrao_vm = PadraoVM(self.view.slot_padroes, dynamic_frame, sidebar_frame)
+        self.padrao_vm.padrao_view
+        self.lista_padrao = self.padrao_vm.volta_padrao()
 
         # Chama o resultado (um conjunto de abas para cada padrão)
         self.resultados_view = ResultadosPadroesView(self.result_frame)
@@ -103,12 +110,13 @@ class ConcentracaoVM:
             ao_vincular_pdfs=self.vincular_pdfs,
             ao_soltar=self.receber_arquivos,
         )
-        self.lista_arquivos_view.pack(fill="both", expand=True)
+        self.lista_arquivos_view.pack(fill="both", expand=True, padx=6, pady=6)
         self.padrao_vm.padrao_view.ao_atualizar = self._padroes_editados
 
         # Exportar e Gráficos dividem a mesma caixa no menu
-        self.caixa_saidas = ctk.CTkFrame(sidebar_frame)
-        self.caixa_saidas.pack(fill="x", padx=10, pady=10)
+        self.caixa_saidas = ctk.CTkFrame(sidebar_frame, fg_color="transparent")
+        self.caixa_saidas.pack(fill="x", padx=16, pady=(14, 10))
+        tema.rotulo_secao(self.caixa_saidas, "Saídas", fill="x", pady=(0, 6))
 
         # Chama a Exportacao
         nome_planilha = f"amostras_{alvo}.xlsx" if alvo else "amostras.xlsx"
@@ -164,7 +172,7 @@ class ConcentracaoVM:
         self._atualizar_status()
 
     def selecionar_arquivos(self):
-        arquivos = list(self.service.selecionar_arquivos())
+        arquivos = sorted(self.service.selecionar_arquivos(), key=lambda c: chave_natural(os.path.basename(c)))
         if arquivos and not self._nomes_repetidos(arquivos):
             self.lista_arquivos_view.carregar(arquivos, self.variaveis.nomes_amostras)
             self._atualizar_selecao()
@@ -181,7 +189,11 @@ class ConcentracaoVM:
 
         estado = self.lista_arquivos_view.estado()
         ja_na_lista = {os.path.normcase(os.path.abspath(linha["arquivo"])) for linha in estado}
-        novos = [c for c in txts if os.path.normcase(os.path.abspath(c)) not in ja_na_lista]
+        # o Windows entrega os arquivos soltos numa ordem qualquer: entram em ordem de nome
+        novos = sorted(
+            (c for c in txts if os.path.normcase(os.path.abspath(c)) not in ja_na_lista),
+            key=lambda c: chave_natural(os.path.basename(c)),
+        )
         if novos:
             if self._nomes_repetidos([linha["arquivo"] for linha in estado] + novos):
                 return
@@ -396,7 +408,7 @@ class ConcentracaoVM:
         if self.desatualizado():
             return "A seleção mudou depois do cálculo: calcule de novo (F5).", "atencao"
         n = len(self.variaveis.lista_arquivos)
-        return f"Calculado · {n} amostra{'s' if n != 1 else ''}.", "info"
+        return f"Calculado · {n} amostra{'s' if n != 1 else ''}.", "feito"
 
     def _atualizar_status(self):
         texto, tipo = self._proximo_passo()
@@ -435,7 +447,8 @@ class ConcentracaoVM:
         return None
 
     def _selecao(self):
-        return tuple(self.arquivos_amostras), tuple(self.padroes_marcados)
+        # sem a ordem: reorganizar a lista não muda nenhum número, então não deixa o cálculo desatualizado
+        return tuple(sorted(self.arquivos_amostras)), tuple(sorted(self.padroes_marcados))
 
     def _herdar_escolhas(self, novos):
         """Slider e elementos desmarcados nos gráficos passam para os resultados novos do mesmo arquivo padrão."""

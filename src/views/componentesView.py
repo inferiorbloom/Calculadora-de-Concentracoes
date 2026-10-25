@@ -12,6 +12,7 @@ from models.configModel import (
     salvar_ultimo_diretorio,
 )
 from models.graficosModel import TEMAS, salvar_figura
+from views import tema
 
 
 class SeletorFormato(ctk.CTkSegmentedButton):
@@ -19,7 +20,7 @@ class SeletorFormato(ctk.CTkSegmentedButton):
 
     def __init__(self, master):
         super().__init__(
-            master, values=[f.upper() for f in FORMATOS_IMAGEM], font=("Arial", 12), command=self._trocar,
+            master, values=[f.upper() for f in FORMATOS_IMAGEM], font=tema.fonte(12), command=self._trocar,
         )
         self.set(carregar_formato_imagem().upper())
 
@@ -36,6 +37,7 @@ class JanelaFigura(ctk.CTkToplevel):
 
     def __init__(self, master, titulo, criar_figura, nome_arquivo):
         super().__init__(master)
+        tema.aplicar_icone(self)
         self.title(titulo)
         self.criar_figura = criar_figura
         self.nome_arquivo = nome_arquivo
@@ -54,7 +56,7 @@ class JanelaFigura(ctk.CTkToplevel):
 
         rodape = ctk.CTkFrame(self, fg_color="transparent")
         rodape.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
-        ctk.CTkButton(rodape, text="Exportar imagem", width=150, fg_color="#0D740F", command=self._exportar).pack(
+        ctk.CTkButton(rodape, text="Exportar imagem", width=150, command=self._exportar, **tema.BOTAO_PRINCIPAL).pack(
             side="right"
         )
         SeletorFormato(rodape).pack(side="right", padx=(0, 8))

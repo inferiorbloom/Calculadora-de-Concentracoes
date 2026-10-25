@@ -136,6 +136,37 @@ class FluxoAbaAlvoTests(unittest.TestCase):
         self.assertEqual(len(self.lista.linhas), 5)  # o repetido não entra de novo
         self.assertEqual(self.lista.pdfs, {1: pdf})
 
+    def _ordem_da_lista(self):
+        return [os.path.basename(caminho) for caminho, _, _ in self.lista.linhas]
+
+    def test_arquivos_soltos_entram_em_ordem_de_nome(self):
+        embaralhados = [self.arquivos[i] for i in (4, 0, 7, 2, 9, 1)]
+        self.vm.receber_arquivos(embaralhados)
+        self.assertEqual(self._ordem_da_lista(), sorted(os.path.basename(c) for c in embaralhados))
+
+    def test_ordenar_pelo_cabecalho_mantem_marcacoes_e_nao_desatualiza(self):
+        self.vm.receber_arquivos(self.arquivos)
+        self._marcar_padrao(0, self.vm.padrao_vm.nomes_padroes()[0])
+        pdf = os.path.join(self.pasta, "qualquer.pdf")
+        open(pdf, "wb").close()
+        self.lista.definir_pdf(3, pdf)
+        self.vm.calcular()
+        arquivo_com_pdf = self._ordem_da_lista()[3]
+
+        self.lista.ordenar("arquivo")  # já estava em ordem crescente: inverte
+        self.assertEqual(self._ordem_da_lista(), sorted(self._ordem_da_lista(), reverse=True))
+        self.assertEqual(self.lista.ordem, ("arquivo", True))
+        estado = {os.path.basename(linha["arquivo"]): linha for linha in self.lista.estado()}
+        self.assertTrue(estado["290426ab.txt"]["padrao"])
+        self.assertEqual(estado[arquivo_com_pdf]["pdf"], pdf)
+        self.assertFalse(self.vm.desatualizado())
+
+        # pelo nome da ficha: F10 depois de F2; quem não tem nome vai para o fim
+        self.vm.variaveis.nomes_amostras.update({"290426ac": "F10", "290426ad": "F2", "290426ae": "F1"})
+        self.vm._nomes_alterados()
+        self.lista.ordenar("nome")
+        self.assertEqual(self._ordem_da_lista()[:3], ["290426ae.txt", "290426ad.txt", "290426ac.txt"])
+
     def test_vincular_pdfs_pela_pasta_do_txt(self):
         self.vm.receber_arquivos(self.arquivos)
         pdf = os.path.join(self.dados, os.path.basename(self.arquivos[2])[:-4].upper() + ".PDF")

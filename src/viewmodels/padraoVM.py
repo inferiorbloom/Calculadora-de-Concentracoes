@@ -7,8 +7,8 @@ import customtkinter as ctk
 
 class PadraoVM:
     def __init__(self, master, dynamic_frame, sidebar_frame):
-        self.frame = ctk.CTkFrame(master)
-        self.frame.pack(pady=10)
+        self.frame = ctk.CTkFrame(master, fg_color="transparent")
+        self.frame.pack(fill="x")
 
         self.padrao_view = PadraoView(master, self.frame)
         self.padrao_model = PadraoModel()

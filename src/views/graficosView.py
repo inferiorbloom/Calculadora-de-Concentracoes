@@ -6,10 +6,7 @@ from models.fichaInformacaoModel import nome_da_amostra
 from models.graficosModel import BASES, LIMITE_ERRO_AREA, TEMAS, TIPOS, UNIDADE_DA_BASE, GraficosModel
 from resource_utils import resource_path
 from views.componentesView import SeletorFormato
-
-# Configurações iniciais do customtkinter
-ctk.set_appearance_mode("dark")
-ctk.set_default_color_theme("dark-blue")
+from views import tema
 
 
 class GraficosView(ctk.CTkFrame):
@@ -23,14 +20,15 @@ class GraficosView(ctk.CTkFrame):
         )
 
         self.botao_grafico = ctk.CTkButton(
-            self, state="disabled", image=icone_graficos, text="Gráficos", font=("Arial", 12), command=""
+            self, state="disabled", image=icone_graficos, text="Gráficos", command="", compound="left", anchor="w",
+            height=36, **tema.BOTAO_SECUNDARIO,
         )
-        self.botao_grafico.pack(pady=(5, 15), fill="x", padx=20)
+        self.botao_grafico.pack(pady=(0, 6), fill="x")
 
 
-COR_CABECALHO = "#213A57"
-CORES_LINHA = ("#2b2b2b", "#252525")  # zebrado
-COR_LINHA_ERRO, COR_TEXTO_ERRO = "#5c1f1f", "#ff9b9b"  # erro da área >= LIMITE_ERRO_AREA
+COR_CABECALHO = tema.BORDA
+CORES_LINHA = (tema.SUPERFICIE, tema.SUPERFICIE_2)  # zebrado
+COR_LINHA_ERRO, COR_TEXTO_ERRO = tema.ERRO_FUNDO, tema.ERRO_TEXTO  # erro da área >= LIMITE_ERRO_AREA
 GRUPOS = {"majoritario": "Majoritário", "traco": "Traço"}
 ALTURA_TABELAS = 260  # quanto a janela cresce ao abrir o modo avançado
 
@@ -49,7 +47,7 @@ class TabelaElementos(ctk.CTkFrame):
         self.ao_alternar = ao_alternar
         self.excluidos = {}
 
-        ctk.CTkLabel(self, text=titulo, font=("Arial", 13, "bold"), anchor="w").pack(fill="x", padx=4)
+        ctk.CTkLabel(self, text=titulo, font=tema.fonte(13, "bold"), anchor="w").pack(fill="x", padx=4)
         # o cabeçalho fica fora da rolagem; a margem direita compensa a barra de rolagem
         self.cabecalho = ctk.CTkFrame(self, fg_color=COR_CABECALHO, corner_radius=4)
         self.cabecalho.pack(fill="x", padx=(0, 16))
@@ -73,7 +71,7 @@ class TabelaElementos(ctk.CTkFrame):
 
         self._colunas(self.cabecalho)
         for coluna, texto in enumerate(("", "Z", "Elemento", unidade, "% do total", "Grupo", "Erro área")):
-            ctk.CTkLabel(self.cabecalho, text=texto, font=("Arial", 12, "bold"), height=26).grid(
+            ctk.CTkLabel(self.cabecalho, text=texto, font=tema.fonte(12, "bold"), height=26).grid(
                 row=0, column=coluna, sticky="ew"
             )
 
@@ -97,7 +95,7 @@ class TabelaElementos(ctk.CTkFrame):
             textos = (str(linha["z"]), linha["elemento"], GraficosModel.formatar_concentracao(linha["valor"]),
                       f"{100 * linha['fracao']:.2f}%", GRUPOS.get(linha["grupo"], linha["grupo"]), erro)
             for coluna, texto in enumerate(textos, start=1):
-                rotulo = ctk.CTkLabel(frame, text=texto, font=("Arial", 12), height=24)
+                rotulo = ctk.CTkLabel(frame, text=texto, font=tema.fonte(12), height=24)
                 if cor:
                     rotulo.configure(text_color=cor)
                 rotulo.grid(row=0, column=coluna, sticky="ew")
@@ -127,6 +125,7 @@ class GraficosJanela(ctk.CTkToplevel):
         tem_concentracao: False antes do Calcular (só a área normalizada; a base "Concentração" fica desabilitada).
         """
         super().__init__(master)
+        tema.aplicar_icone(self)
         self.title("Gráficos")
         self.model = model
         self.estado = estado
@@ -150,13 +149,13 @@ class GraficosJanela(ctk.CTkToplevel):
         topo = ctk.CTkFrame(self, fg_color="transparent")
         topo.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 0))
         if len(self.resultados) > 1:
-            ctk.CTkLabel(topo, text="Padrão:", font=("Arial", 13, "bold")).pack(side="left", padx=(0, 6))
+            ctk.CTkLabel(topo, text="Padrão:", font=tema.fonte(13, "bold")).pack(side="left", padx=(0, 6))
             self.combo_padrao = ctk.CTkComboBox(
                 topo, values=list(self.resultados), width=260, state="readonly", command=self._trocar_padrao,
             )
             self.combo_padrao.set(self.resultado.rotulo)
             self.combo_padrao.pack(side="left", padx=(0, 20))
-        ctk.CTkLabel(topo, text="Amostra:", font=("Arial", 13, "bold")).pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(topo, text="Amostra:", font=tema.fonte(13, "bold")).pack(side="left", padx=(0, 6))
         self.combo_amostra = ctk.CTkComboBox(
             topo, values=[], width=220, state="readonly", command=lambda _: self._atualizar(),
         )
@@ -164,34 +163,34 @@ class GraficosJanela(ctk.CTkToplevel):
 
         # tipo de gráfico (vale para a tela e para as imagens exportadas)
         self.seletor_tipo = ctk.CTkSegmentedButton(
-            topo, values=list(TIPOS.values()), command=self._trocar_tipo, font=("Arial", 12),
+            topo, values=list(TIPOS.values()), command=self._trocar_tipo, font=tema.fonte(12),
         )
         self.seletor_tipo.set(TIPOS[self.estado.get("tipo", "anel")])
         self.seletor_tipo.pack(side="right")
-        ctk.CTkLabel(topo, text="Gráfico:", font=("Arial", 13, "bold")).pack(side="right", padx=(0, 6))
+        ctk.CTkLabel(topo, text="Gráfico:", font=tema.fonte(13, "bold")).pack(side="right", padx=(0, 6))
 
         # --- slider: elementos no traço ---
         linha_slider = ctk.CTkFrame(self, fg_color="transparent")
         linha_slider.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
-        ctk.CTkLabel(linha_slider, text="Elementos no traço:", font=("Arial", 13)).pack(side="left", padx=(0, 8))
+        ctk.CTkLabel(linha_slider, text="Elementos no traço:", font=tema.fonte(13)).pack(side="left", padx=(0, 8))
         self.slider = ctk.CTkSlider(linha_slider, from_=0, to=1, number_of_steps=1, width=300,
                                     command=self._mover_slider)
         self.slider.pack(side="left")
-        self.label_slider = ctk.CTkLabel(linha_slider, text="", font=("Arial", 13))
+        self.label_slider = ctk.CTkLabel(linha_slider, text="", font=tema.fonte(13))
         self.label_slider.pack(side="left", padx=10)
 
         # concentração ou área normalizada (para quem analisa algo sem concentração calculada)
         self.seletor_base = ctk.CTkSegmentedButton(
-            linha_slider, values=list(BASES.values()), command=self._trocar_base, font=("Arial", 12),
+            linha_slider, values=list(BASES.values()), command=self._trocar_base, font=tema.fonte(12),
         )
         self.seletor_base.set(BASES[self.estado.get("base", "concentracao")])
         self.seletor_base.pack(side="right")
         if not tem_concentracao:
             self.seletor_base.configure(state="disabled")
             ctk.CTkLabel(
-                linha_slider, text="Concentração só depois do Calcular", font=("Arial", 12), text_color="#898781",
+                linha_slider, text="Concentração só depois do Calcular", font=tema.fonte(12), text_color=tema.APAGADO,
             ).pack(side="right", padx=(0, 12))
-        ctk.CTkLabel(linha_slider, text="Base:", font=("Arial", 13, "bold")).pack(side="right", padx=(0, 6))
+        ctk.CTkLabel(linha_slider, text="Base:", font=tema.fonte(13, "bold")).pack(side="right", padx=(0, 6))
 
         # --- gráficos ---
         self.frame_graficos = ctk.CTkFrame(self, fg_color=TEMAS["escuro"]["fundo"])
@@ -211,16 +210,16 @@ class GraficosJanela(ctk.CTkToplevel):
         self.var_automatico = ctk.BooleanVar(master=self, value=estado.get("automatico", False))
         ctk.CTkCheckBox(
             rodape, text="Distribuir automaticamente (cerca de 5% no traço, em todas as amostras)",
-            variable=self.var_automatico, command=self._trocar_automatico, font=("Arial", 12),
+            variable=self.var_automatico, command=self._trocar_automatico, font=tema.fonte(12),
         ).pack(side="left")
         ctk.CTkButton(
-            rodape, text="Exportar imagens", width=150, fg_color="#0D740F", command=lambda: ao_exportar(self),
+            rodape, text="Exportar imagens", width=150, command=lambda: ao_exportar(self), **tema.BOTAO_PRINCIPAL,
         ).pack(side="right")
         SeletorFormato(rodape).pack(side="right", padx=(0, 8))
         self.var_avancado = ctk.BooleanVar(master=self, value=estado.get("avancado", False))
         ctk.CTkCheckBox(
             rodape, text="Avançado (escolher os elementos dos gráficos)", variable=self.var_avancado,
-            command=self._trocar_avancado, font=("Arial", 12),
+            command=self._trocar_avancado, font=tema.fonte(12),
         ).pack(side="right", padx=(0, 20))
         if self.var_avancado.get():
             self.geometry(f"{largura}x{self._altura_avancado(altura, +1)}+{x}+{max(y - ALTURA_TABELAS // 2, 0)}")

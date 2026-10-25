@@ -4,10 +4,7 @@ import customtkinter as ctk
 from PIL import Image
 
 from resource_utils import resource_path
-
-# Configurações iniciais do customtkinter
-ctk.set_appearance_mode("dark")
-ctk.set_default_color_theme("dark-blue")
+from views import tema
 
 
 class ExportarView(ctk.CTkFrame):
@@ -25,22 +22,24 @@ class ExportarView(ctk.CTkFrame):
         )
 
         linha = ctk.CTkFrame(self, fg_color="transparent")
-        linha.pack(pady=(15, 5), fill="x", padx=20)
+        linha.pack(pady=(0, 6), fill="x")
 
         # engrenagem: escolher quais abas vão para o Excel (fica habilitada mesmo antes de calcular)
         self.configurar_botao = ctk.CTkButton(
-            linha, text="", width=32, image=icone_engrenagem, command=None,
+            linha, text="", width=36, height=36, image=icone_engrenagem, command=None, **tema.BOTAO_SECUNDARIO,
         )
         self.configurar_botao.pack(side="right", padx=(6, 0))
 
         self.exportar_botao = ctk.CTkButton(
             linha,
-            text="Exportar para Excel",
+            text="Exportar Excel",
             state="disabled",
             command="",
             image=icone_excel,
             compound="left",
-            font=("Arial", 12),
+            anchor="w",
+            height=36,
+            **tema.BOTAO_SECUNDARIO,
         )
         self.exportar_botao.pack(side="left", fill="x", expand=True)
 
@@ -86,15 +85,16 @@ class AbasExportarDialog(ctk.CTkToplevel):
 
     def __init__(self, master, abas, selecionadas, ao_salvar):
         super().__init__(master)
+        tema.aplicar_icone(self)
         self.title("Abas para exportar")
         self.resizable(False, False)
         self.ao_salvar = ao_salvar
 
         ctk.CTkLabel(
-            self, text="Escolha as abas que vão para o Excel:", font=("Arial", 14, "bold"), anchor="w",
+            self, text="Escolha as abas que vão para o Excel:", font=tema.fonte(14, "bold"), anchor="w",
         ).pack(fill="x", padx=20, pady=(15, 10))
 
-        lista = ctk.CTkFrame(self, fg_color="#2b2b2b")
+        lista = ctk.CTkFrame(self, fg_color=tema.SUPERFICIE)
         lista.pack(fill="x", padx=20)
         lista.grid_columnconfigure(1, weight=1)
 
@@ -105,22 +105,22 @@ class AbasExportarDialog(ctk.CTkToplevel):
             self.variaveis[aba] = var
 
             ctk.CTkCheckBox(
-                lista, text=aba, width=150, font=("Arial", 13, "bold"), variable=var,
+                lista, text=aba, width=150, font=tema.fonte(13, "bold"), variable=var,
             ).grid(row=linha, column=0, padx=(12, 6), pady=6, sticky="w")
-            ctk.CTkLabel(lista, text=curta, font=("Arial", 12), text_color="#B0B0B0", anchor="w").grid(
+            ctk.CTkLabel(lista, text=curta, font=tema.fonte(12), text_color=tema.TEXTO_2, anchor="w").grid(
                 row=linha, column=1, padx=6, pady=6, sticky="w"
             )
             if longa:
                 ctk.CTkButton(
-                    lista, text="?", width=26, height=26, corner_radius=13, font=("Arial", 12, "bold"),
+                    lista, text="?", width=26, height=26, corner_radius=13, font=tema.fonte(12, "bold"),
                     command=lambda a=aba, t=longa: messagebox.showinfo(a, t, parent=self),
                 ).grid(row=linha, column=2, padx=(6, 12), pady=6)
 
         botoes = ctk.CTkFrame(self, fg_color="transparent")
         botoes.pack(fill="x", padx=20, pady=15)
-        ctk.CTkButton(botoes, text="Salvar", width=110, fg_color="#0D740F", command=self._salvar).pack(side="right")
+        ctk.CTkButton(botoes, text="Salvar", width=110, command=self._salvar, **tema.BOTAO_PRINCIPAL).pack(side="right")
         ctk.CTkButton(
-            botoes, text="Cancelar", width=110, fg_color="#555555", hover_color="#666666", command=self.destroy,
+            botoes, text="Cancelar", width=110, command=self.destroy, **tema.BOTAO_SECUNDARIO,
         ).pack(side="right", padx=(0, 8))
 
         # janela modal, por cima da principal
@@ -150,24 +150,24 @@ class ExportarTodosView(ctk.CTkFrame):
         centro = ctk.CTkFrame(self, fg_color="transparent")
         centro.place(relx=0.5, rely=0.45, anchor="center")
 
-        ctk.CTkLabel(centro, text="Exportar todos os alvos", font=("Segoe UI", 22, "bold")).pack()
+        ctk.CTkLabel(centro, text="Exportar todos os alvos", font=tema.fonte(22, "bold")).pack()
         ctk.CTkLabel(
             centro,
             text="Uma aba por padrão de cada alvo, com a concentração e o erro de cada elemento\n"
                  "nas amostras e o LD logo abaixo do nome do elemento.",
-            font=("Segoe UI", 13), text_color="#898781", justify="center",
+            font=tema.fonte(13), text_color=tema.APAGADO, justify="center",
         ).pack(pady=(10, 15))
 
-        lista = ctk.CTkFrame(centro, fg_color="#2b2b2b")
+        lista = ctk.CTkFrame(centro, fg_color=tema.SUPERFICIE)
         lista.pack(fill="x", pady=(0, 15))
         lista.grid_columnconfigure(1, weight=1)
 
         self.status = {}
         for linha, alvo in enumerate(alvos):
-            ctk.CTkLabel(lista, text=alvo, font=("Segoe UI", 16, "bold"), width=40, anchor="w").grid(
+            ctk.CTkLabel(lista, text=alvo, font=tema.fonte(16, "bold"), width=40, anchor="w").grid(
                 row=linha, column=0, padx=(14, 6), pady=6, sticky="w"
             )
-            self.status[alvo] = ctk.CTkLabel(lista, text="", font=("Segoe UI", 12), anchor="w")
+            self.status[alvo] = ctk.CTkLabel(lista, text="", font=tema.fonte(12), anchor="w")
             self.status[alvo].grid(row=linha, column=1, padx=(6, 14), pady=6, sticky="w")
 
         icone_excel = ctk.CTkImage(
@@ -176,9 +176,9 @@ class ExportarTodosView(ctk.CTkFrame):
         )
         self.exportar_botao = ctk.CTkButton(
             centro, text="Exportar para Excel", state="disabled", image=icone_excel, compound="left",
-            font=("Arial", 13), height=36,
+            font=tema.fonte(13), height=36,
         )
         self.exportar_botao.pack(fill="x")
 
     def mostrar_status(self, alvo, texto, calculado):
-        self.status[alvo].configure(text=texto, text_color="#f0efec" if calculado else "#898781")
+        self.status[alvo].configure(text=texto, text_color=tema.TEXTO if calculado else tema.APAGADO)

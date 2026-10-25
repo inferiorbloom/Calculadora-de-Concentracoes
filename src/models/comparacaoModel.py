@@ -14,6 +14,7 @@ ESTILOS = {"barras": "Barras", "linhas": "Linhas"}
 CORES_PADROES = ("#2a78d6", "#eb6834", "#8f6fe0", "#1baf7a", "#d4a017")  # na ordem dos padrões
 CORES_ALVOS = {"Ag": "#8b95a1", "Au": "#d4a017", "Rh": "#1baf7a"}  # cor fixa de cada alvo em todos os gráficos
 COR_SEM_ALVO = "#9a988f"
+CODIGO_DATA = re.compile(r"\d{6}[a-z]{1,3}")  # código da medida (data + letras), sem nome
 LIMITE_G_KG = 10000  # mg/kg: a partir daqui o eixo do elemento passa para g/kg
 MAX_AMOSTRAS_LADO_A_LADO = 20  # somando os painéis; com mais, os painéis (um por padrão) ficam um embaixo do outro
 
@@ -89,19 +90,74 @@ class ComparacaoModel:
         comparacao.paineis = [painel]
         return comparacao
 
+    @staticmethod
+    def _sufixo(amostra):
+        """Letras depois da data no código ("251026ab" -> "ab"); "" se o nome não tiver esse formato."""
+        m = re.fullmatch(r"\d{6}([a-z]{1,3})", codigo_amostra(amostra))
+        return m.group(1) if m else ""
+
+    def _ligar_amostras(self, amostras_por_alvo, nomes_por_alvo):
+        """
+        Como reconhecer a mesma amostra em alvos diferentes (os arquivos de cada alvo são medidas diferentes).
+        Tenta, nesta ordem: o nome da ficha de informação, as letras depois da data no código ("ab" de 251026ab)
+        e, por último, a posição na lista. Uma forma vale se servir para todas as amostras (todas com nome, por
+        exemplo), não repetir chave dentro de um alvo e ligar pelo menos metade das amostras que poderiam ser ligadas.
+        Devolve ({alvo: {amostra: chave}}, {chave: rótulo}, texto de como foram ligadas).
+        """
+        def por_nome(alvo, i, amostra):
+            nome = nome_da_amostra(nomes_por_alvo.get(alvo), amostra).strip().lower()
+            return ("nome", nome) if nome else ("sem nome", alvo, amostra)
+
+        def por_sufixo(alvo, i, amostra):
+            sufixo = self._sufixo(amostra)
+            return ("sufixo", sufixo) if sufixo else ("sem sufixo", alvo, amostra)
+
+        formas = (
+            (por_nome, "pelo nome da ficha de informação"),
+            (por_sufixo, "pelas letras depois da data no código (ex.: ab de 251026ab)"),
+            (lambda alvo, i, amostra: ("ordem", i), "pela ordem da lista (confira se as amostras correspondem)"),
+        )
+        total = sum(len(a) for a in amostras_por_alvo.values())
+        maior = max((len(a) for a in amostras_por_alvo.values()), default=0)
+        for chave_de, texto in formas:
+            chaves = {alvo: {a: chave_de(alvo, i, a) for i, a in enumerate(lista)}
+                      for alvo, lista in amostras_por_alvo.items()}
+            if any(k[0].startswith("sem ") for c in chaves.values() for k in c.values()):
+                continue  # alguma amostra sem nome (ou sem as letras no código)
+            if any(len(set(c.values())) < len(c) for c in chaves.values()):
+                continue  # duas amostras do mesmo alvo com a mesma chave
+            unicas = len({k for c in chaves.values() for k in c.values()})
+            possiveis = total - maior
+            if possiveis <= 0 or (total - unicas) / possiveis >= 0.5:
+                break
+
+        rotulos = {}
+        for alvo, lista in amostras_por_alvo.items():
+            for amostra in lista:
+                rotulos.setdefault(chaves[alvo][amostra], [])
+                rotulos[chaves[alvo][amostra]].append(nome_da_amostra(nomes_por_alvo.get(alvo), amostra) or amostra)
+        # rótulo no eixo X: o nome da ficha, se algum alvo tiver; senão o código do primeiro alvo
+        rotulos = {k: next((r for r in lista if not CODIGO_DATA.fullmatch(r.lower())), lista[0])
+                   for k, lista in rotulos.items()}
+        return chaves, rotulos, texto
+
     def entre_alvos(self, resultados_por_alvo, nomes_por_alvo=None):
         """
-        2ª situação: cada alvo é uma série. Os arquivos de cada alvo são medidas diferentes, então a amostra é
-        reconhecida entre os alvos pelo nome da ficha de informação; sem nome, fica só no próprio alvo.
-        Os padrões são pareados pelo nome do padrão certificado: um painel por padrão, com os alvos que o usaram.
+        2ª situação: cada alvo é uma série, no mesmo gráfico. A amostra é reconhecida entre os alvos como
+        _ligar_amostras() explica. Os padrões são pareados pelo nome do padrão certificado: um painel por padrão.
         """
         nomes_por_alvo = nomes_por_alvo or {}
         comparacao = Comparacao("entre alvos", "alvos")
-        vistas = {}  # chave -> rótulo
-        paineis = {}  # padrão certificado -> Painel
-        sem_nome = set()
+        amostras_por_alvo = {}
         for alvo, resultados in resultados_por_alvo.items():
-            nomes = nomes_por_alvo.get(alvo) or {}
+            lista = amostras_por_alvo.setdefault(alvo, [])
+            for r in resultados:
+                lista += [a for a in self._amostras(r) if a not in lista]
+        chaves, rotulos, como = self._ligar_amostras(amostras_por_alvo, nomes_por_alvo)
+
+        paineis = {}  # padrão certificado -> Painel
+        vistas = {}  # chave -> rótulo, na ordem em que aparecem
+        for alvo, resultados in resultados_por_alvo.items():
             for r in resultados:
                 certificado = r.nome_certificado or r.nome
                 painel = paineis.setdefault(certificado, Painel(f"Padrão {certificado}"))
@@ -109,22 +165,13 @@ class ComparacaoModel:
                     continue  # o mesmo padrão certificado duas vezes no alvo: fica o primeiro
                 serie = Serie(alvo, CORES_ALVOS.get(alvo, COR_SEM_ALVO))
                 for amostra in self._amostras(r):
-                    nome = nome_da_amostra(nomes, amostra)
-                    if nome:
-                        chave, rotulo = ("nome", nome.strip().lower()), nome
-                    else:
-                        chave, rotulo = ("codigo", alvo, codigo_amostra(amostra)), f"{amostra} ({alvo})"
-                        sem_nome.add(alvo)
-                    vistas.setdefault(chave, rotulo)
+                    chave = chaves[alvo][amostra]
+                    vistas.setdefault(chave, rotulos[chave])
                     serie.valores[chave] = self.valores_com_erro(r, amostra, {alvo})
                 painel.series.append(serie)
         comparacao.amostras = list(vistas.items())
         comparacao.paineis = list(paineis.values())
-        if sem_nome:
-            comparacao.avisos.append(
-                f"Amostras sem nome na ficha ({', '.join(sorted(sem_nome))}) não são ligadas entre os alvos: "
-                "aparecem só com o próprio alvo."
-            )
+        comparacao.avisos.append(f"Amostras ligadas entre os alvos {como}.")
         return comparacao
 
     @staticmethod

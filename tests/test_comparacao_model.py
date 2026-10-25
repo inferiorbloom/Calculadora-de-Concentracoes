@@ -49,12 +49,33 @@ class ComparacaoModelTests(unittest.TestCase):
         nist = c.paineis[0]
         self.assertEqual([s.rotulo for s in nist.series], ["Ag", "Au"])
         self.assertEqual(nist.series[1].cor, CORES_ALVOS["Au"])
-        # "Solo 1" e "solo 1 " são a mesma amostra; au02 (sem nome) fica só com o Au
-        self.assertEqual([r for _, r in c.amostras], ["Solo 1", "au02 (Au)"])
+        # au02 não tem nome e os códigos não têm data: liga pela ordem (Solo 1 com a 1ª do Au)
+        self.assertEqual([r for _, r in c.amostras], ["Solo 1", "au02"])
         chave_solo = c.amostras[0][0]
         self.assertEqual(nist.series[0].valores[chave_solo]["Fe"], (10.0, 1.0))
         self.assertEqual(nist.series[1].valores[chave_solo]["Fe"], (9.0, 0.0))
         self.assertTrue(c.avisos)
+
+    def _alvos(self, codigos_ag, codigos_au):
+        def resultado(codigos):
+            concs = {c: {("Fe", 6.4): float(i + 1)} for i, c in enumerate(codigos)}
+            return [_resultado("p", "NIST", concs, {c: {} for c in codigos})]
+        return {"Ag": resultado(codigos_ag), "Au": resultado(codigos_au)}
+
+    def test_sem_ficha_liga_pelas_letras_depois_da_data(self):
+        c = self.model.entre_alvos(self._alvos(["251026ab", "251026ac"], ["261026ac", "261026ab"]))
+        self.assertEqual(len(c.amostras), 2)  # ab com ab, ac com ac, mesmo fora de ordem
+        ag, au = c.paineis[0].series
+        self.assertEqual(ag.valores[("sufixo", "ab")]["Fe"][0], 1.0)  # 251026ab é a 1ª do Ag
+        self.assertEqual(au.valores[("sufixo", "ab")]["Fe"][0], 2.0)  # 261026ab é a 2ª do Au
+        self.assertIn("letras", c.avisos[0])
+
+    def test_sem_ficha_nem_letras_em_comum_liga_pela_ordem(self):
+        c = self.model.entre_alvos(self._alvos(["251026ab", "251026ac"], ["261026xa", "261026xb"]))
+        self.assertEqual([r for _, r in c.amostras], ["251026ab", "251026ac"])
+        _, au = c.paineis[0].series
+        self.assertEqual(au.valores[("ordem", 0)]["Fe"][0], 1.0)  # a primeira do Au com a primeira do Ag
+        self.assertIn("ordem", c.avisos[0])
 
     def test_figura_e_exportacao(self):
         r1 = _resultado("p1", "NIST", {"a": {("Fe", 6.4): 20000.0}}, {"a": {("Fe", 6.4): 500.0}})

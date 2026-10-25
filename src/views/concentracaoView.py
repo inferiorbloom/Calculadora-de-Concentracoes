@@ -16,7 +16,9 @@ from models.leitorArquivoModel import nome_amostra as _nome_arquivo
 from models.qualidadeModel import (
     LIMITE_RECUPERACAO,
     TEXTO_MENOR_LD,
+    LIMITE_INCERTEZA,
     abaixo_do_ld,
+    classificar,
     ld_de_referencia,
     recuperacao,
     recuperacao_fora,
@@ -177,7 +179,7 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
     COR_RECUPERACAO = (tema.OK_FUNDO, tema.OK_TEXTO)  # linha de recuperação de um material certificado medido como amostra
     COR_RECUPERACAO_FORA = (tema.ATENCAO_FUNDO, tema.ATENCAO)  # recuperação fora de 100% ± LIMITE_RECUPERACAO
 
-    LIMITE_INCERTEZA = 0.40
+    LIMITE_INCERTEZA = LIMITE_INCERTEZA
 
     _abertas = []  # todas as tabelas: a opção "< LD" vale para todas ao mesmo tempo
 
@@ -531,20 +533,16 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
                 if menor_ld and abaixo_do_ld(valor, ld):
                     texto = TEXTO_MENOR_LD
 
-                abaixo_ld = valor is not None and ld is not None and valor <= 3 * ld
-                incerteza_alta = (
-                    valor is not None and erro is not None and valor != 0
-                    and abs(erro / valor) >= self.LIMITE_INCERTEZA
-                )
+                destaque = classificar(valor, erro, ld)
 
                 # vermelho (≤ 3×LD) tem prioridade; com incerteza alta também, ganha o marcador
-                if abaixo_ld and incerteza_alta:
+                if destaque == "ambos":
                     destacadas[(indice_linha, coluna)] = self.COR_AMBOS
                     if texto != TEXTO_MENOR_LD:
                         texto += MARCADOR_AMBOS
-                elif abaixo_ld:
+                elif destaque == "abaixo_ld":
                     destacadas[(indice_linha, coluna)] = self.COR_ABAIXO_LD
-                elif incerteza_alta:
+                elif destaque == "incerteza":
                     destacadas[(indice_linha, coluna)] = self.COR_INCERTEZA_ALTA
 
                 celulas.append(texto)

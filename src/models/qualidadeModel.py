@@ -7,6 +7,8 @@ from models.PadraoModel import FATOR_PARA_MG_KG
 
 LIMITE_RECUPERACAO = 0.10  # recuperação fora de 100% ± 10% fica destacada na tabela
 TEXTO_MENOR_LD = "< LD"
+FATOR_LD_DESTAQUE = 3  # valor ≤ 3 × LD fica destacado (tabela e Excel)
+LIMITE_INCERTEZA = 0.40  # erro ≥ 40% do valor fica destacado (tabela e Excel)
 
 
 def _para_float(valor):
@@ -59,3 +61,18 @@ def recuperacao(valor, unidade, info_certificado):
 
 def recuperacao_fora(percentual):
     return percentual is not None and abs(percentual - 100) > 100 * LIMITE_RECUPERACAO
+
+
+def classificar(valor, erro, ld):
+    """
+    Destaque de um valor, a mesma regra na tabela do programa e no Excel:
+    "abaixo_ld" (valor ≤ 3 × LD), "incerteza" (erro ≥ 40% do valor), "ambos" ou None.
+    """
+    valor, erro = _para_float(valor), _para_float(erro)
+    if valor is None:
+        return None
+    abaixo = ld is not None and valor <= FATOR_LD_DESTAQUE * ld
+    incerteza = erro is not None and valor != 0 and abs(erro / valor) >= LIMITE_INCERTEZA
+    if abaixo and incerteza:
+        return "ambos"
+    return "abaixo_ld" if abaixo else ("incerteza" if incerteza else None)

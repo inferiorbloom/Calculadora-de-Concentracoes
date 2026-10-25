@@ -6,6 +6,18 @@ import pandas as pd
 REGUA_GROSSA = 2  # topo e fim da tabela
 REGUA_FINA = 1  # abaixo do cabeçalho, sob os títulos mesclados e na coluna de rótulos
 
+# os mesmos destaques da tabela do programa, em tons claros (o Excel tem fundo branco)
+DESTAQUES = {
+    "abaixo_ld": {"bg_color": "#F8D7DA", "font_color": "#9C1C28"},
+    "incerteza": {"bg_color": "#FDE7C8", "font_color": "#8A4B08"},
+    "ambos": {"bg_color": "#F1AEB5", "font_color": "#7A0E1A", "bold": True},
+}
+LEGENDA = [
+    ("abaixo_ld", "Valor ≤ 3×LD"),
+    ("incerteza", "Incerteza ≥ 40% do valor"),
+    ("ambos", "≤ 3×LD e incerteza ≥ 40%"),
+]
+
 
 class EstiloTabela:
     """
@@ -24,10 +36,11 @@ class EstiloTabela:
         self._formatos = {}
         self._larguras = {}  # (aba, coluna) -> maior largura pedida até agora
 
-    def formato(self, cima=0, baixo=0, direita=0, negrito=False, num_format=None):
-        chave = (cima, baixo, direita, negrito, num_format)
+    def formato(self, cima=0, baixo=0, direita=0, negrito=False, num_format=None, destaque=None):
+        """destaque: uma chave de DESTAQUES (fundo e cor do texto), ou None."""
+        chave = (cima, baixo, direita, negrito, num_format, destaque)
         if chave not in self._formatos:
-            propriedades = {"align": "center", "valign": "vcenter"}
+            propriedades = {"align": "center", "valign": "vcenter", **DESTAQUES.get(destaque, {})}
             if cima:
                 propriedades["top"] = cima
             if baixo:
@@ -77,7 +90,7 @@ class EstiloTabela:
         return len(str(valor)) if valor is not None else 0
 
     def escrever(self, worksheet, linha, coluna, cabecalho, corpo, colunas_rotulo=0, mesclas=(),
-                 linhas_valor=(), separar_antes=(), formatos_coluna=None, na_rep="-"):
+                 linhas_valor=(), separar_antes=(), formatos_coluna=None, na_rep="-", destaques=None):
         """
         cabecalho / corpo: listas de linhas (listas de valores), a partir de (linha, coluna).
         colunas_rotulo: quantas colunas do início são rótulos (ganham a linha vertical à direita).
@@ -85,12 +98,14 @@ class EstiloTabela:
         linhas_valor: linhas do cabeçalho que trazem valores (ex.: LD), sem negrito.
         separar_antes: linhas do corpo com uma régua fina em cima (ex.: Média, depois das amostras).
         formatos_coluna: {coluna: formato numérico} para o corpo, ex.: {5: "0.0"}.
+        destaques: {(linha do corpo, coluna): chave de DESTAQUES}, ex.: {(0, 3): "abaixo_ld"}.
         Devolve o número de linhas escritas.
         """
         linhas = [(valores, True) for valores in cabecalho] + [(valores, False) for valores in corpo]
         if not linhas:
             return 0
         formatos_coluna = formatos_coluna or {}
+        destaques = destaques or {}
         n_colunas = max(len(valores) for valores, _ in linhas)
         fim_mescla = {(l, c): fim for l, c, fim in mesclas}
         cobertas = {(l, c) for l, inicio, fim in mesclas for c in range(inicio + 1, fim + 1)}
@@ -120,6 +135,7 @@ class EstiloTabela:
                     cima, baixo, direita,
                     negrito=eh_cabecalho and i not in linhas_valor,
                     num_format=None if eh_cabecalho else formatos_coluna.get(c),
+                    destaque=None if eh_cabecalho else destaques.get((i_corpo, c)),
                 )
                 valor = valores[c] if c < len(valores) else None
                 valor = self._valor(valor, None if eh_cabecalho else na_rep)
@@ -133,6 +149,16 @@ class EstiloTabela:
                     self._ajustar_largura(worksheet, coluna + c, self._largura_texto(valor))
 
         return len(linhas)
+
+    def escrever_legenda(self, worksheet, linha, coluna, tipos=None):
+        """Uma célula por destaque usado (tipos; None = todos), lado a lado, com a própria cor."""
+        n = 0
+        for tipo, texto in LEGENDA:
+            if tipos is None or tipo in tipos:
+                formato = self.formato(destaque=tipo)
+                worksheet.merge_range(linha, coluna + 2 * n, linha, coluna + 2 * n + 1, texto, formato)
+                n += 1
+        return n
 
     def escrever_celula(self, worksheet, linha, coluna, valor, negrito=False):
         """Célula solta (fora de tabela), centralizada e sem borda."""

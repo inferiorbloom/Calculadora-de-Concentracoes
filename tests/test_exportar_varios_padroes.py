@@ -165,5 +165,56 @@ class ExportarVariosPadroesTests(unittest.TestCase):
         self.assertEqual(list(df["Elemento"]), ["K", "Ca"])  # Fe não tem LD nem sensibilidade
 
 
+def _abas_do_arquivo(caminho):
+    with zipfile.ZipFile(caminho) as xlsx:
+        return [html.unescape(n) for n in re.findall(r'<sheet name="([^"]+)"', xlsx.read("xl/workbook.xml").decode("utf-8"))]
+
+
+class NomeDaFichaEDestaquesTests(unittest.TestCase):
+    def setUp(self):
+        padroes = _padroes_certificados()
+        self.amostras = [os.path.join(AQUISICOES, f"290426a{c}.txt") for c in "cde"]
+        self.padrao_1 = _calcular(self.amostras, os.path.join(AQUISICOES, "290426ab.txt"), padroes[0])
+        self.padrao_2 = _calcular(self.amostras, os.path.join(AQUISICOES, "290426ak.txt"), padroes[1])
+        self.model = ExportarModel()
+        self.model.mostrar_popup_sucesso = lambda caminho: None
+        self.nomes = {"290426ab": "Pd Solo"}  # só o primeiro padrão tem nome na ficha
+
+    def test_abas_com_o_nome_da_ficha_do_padrao(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, "saida.xlsx")
+            self.model.exportar_para_excel(
+                self.amostras, [self.padrao_1, self.padrao_2], caminho, abas_exportar=["Concentrações"],
+                nomes_amostras=self.nomes,
+            )
+            self.assertEqual(_abas_do_arquivo(caminho), ["Concentrações - Pd Solo", "Concentrações - 290426ak"])
+
+            caminho = os.path.join(pasta, "todos.xlsx")
+            self.model.exportar_todos_alvos({"Ag": [self.padrao_1, self.padrao_2]}, caminho, {"Ag": self.nomes})
+            self.assertEqual(_abas_do_arquivo(caminho), ["Ag - Pd Solo", "Ag - 290426ak"])
+            self.assertEqual(_textos_da_primeira_aba(caminho)[(0, 0)], "Padrão: Pd Solo · 290426ab (a) PS. Mexilhão)")
+
+    def test_destaques_seguem_a_regra_da_tabela(self):
+        r = self.padrao_1
+        amostra = "290426ac"
+        r.resultado_limite = {amostra: {"K": 1e9}}  # K de 290426ac fica ≤ 3×LD
+        classes = self.model._classes(r)
+        chave_k = next(c for c in r.concentracoes["concentracao1"][amostra] if c[0] == "K")
+        self.assertIn(classes[(amostra, chave_k)], ("abaixo_ld", "ambos"))
+
+        elementos = sorted({c for b in r.concentracoes.values() for v in b.values() for c in v})
+        destaques = self.model._destaques(r, [amostra], elementos, 1, 2)
+        k = elementos.index(chave_k)
+        self.assertIn(destaques[(0, 1 + 2 * k)], ("abaixo_ld", "ambos"))
+        self.assertEqual(destaques[(0, 1 + 2 * k)], destaques[(0, 2 + 2 * k)])  # C e Erro juntos
+
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, "saida.xlsx")
+            self.model.exportar_para_excel(self.amostras, [r], caminho, abas_exportar=["Resultados"])
+            with zipfile.ZipFile(caminho) as xlsx:
+                self.assertIn("F8D7DA", xlsx.read("xl/styles.xml").decode("utf-8").upper())
+            self.assertIn("Valor ≤ 3×LD", _textos_da_primeira_aba(caminho).values())
+
+
 if __name__ == "__main__":
     unittest.main()

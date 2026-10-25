@@ -9,7 +9,7 @@
 ; atualizar ou desinstalar não mexe neles.
 
 #define MyAppName "CX Rays"
-#define MyAppVersion "1.2"
+#define MyAppVersion "1.3"
 #define MyAppPublisher "Cloud Physics"
 #define MyAppExeName "CalculadoraConcentracoes.exe"
 #define PastaBuild "dist\CalculadoraConcentracoes"
@@ -24,8 +24,10 @@ AppPublisher={#MyAppPublisher}
 VersionInfoVersion={#MyAppVersion}
 SetupIconFile=imagens\icones\cx_rays.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
-; numa atualização, o Inno Setup reaproveita a pasta onde a versão anterior foi instalada
+; pasta sem número de versão. UsePreviousAppDir=no: sem isso, a atualização reaproveitaria a pasta
+; "CX Rays 1.1" da primeira instalação (que é apagada em [InstallDelete])
 DefaultDirName={autopf}\{#MyAppName}
+UsePreviousAppDir=no
 DisableProgramGroupPage=yes
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
@@ -47,13 +49,22 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [InstallDelete]
 ; arquivos da versão anterior que não existem mais na nova não ficam esquecidos na pasta
 Type: filesandordirs; Name: "{app}\_internal"
+; pasta da 1.1 (as atualizações seguintes eram instaladas nela)
+Type: filesandordirs; Name: "{autopf}\CX Rays 1.1"
+; atalhos de versões anteriores ("CX Rays", "CX Rays 1.1", ...): o Inno Setup não apaga atalho que mudou de nome.
+; O desta versão é criado depois, em [Icons].
+Type: files; Name: "{autoprograms}\{#MyAppName}*.lnk"
+Type: files; Name: "{autodesktop}\{#MyAppName}*.lnk"
+Type: files; Name: "{userprograms}\{#MyAppName}*.lnk"
+Type: files; Name: "{userdesktop}\{#MyAppName}*.lnk"
 
 [Files]
 Source: "{#PastaBuild}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+; o atalho leva a versão no nome ("CX Rays 1.3"); os das versões anteriores são apagados em [InstallDelete]
+Name: "{autoprograms}\{#MyAppName} {#MyAppVersion}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{autodesktop}\{#MyAppName} {#MyAppVersion}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent

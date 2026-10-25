@@ -1,4 +1,6 @@
 import os
+import re
+import tkinter
 from tkinter import messagebox, ttk
 
 import customtkinter as ctk
@@ -9,74 +11,111 @@ from tksheet import Sheet
 from models.abaResultadosModel import montar_titulo_coluna
 from models.elementosQuimicos import z_do_elemento
 from models.fichaInformacaoModel import nome_da_amostra
+from models.configModel import carregar_mostrar_menor_ld, salvar_mostrar_menor_ld
 from models.leitorArquivoModel import nome_amostra as _nome_arquivo
+from models.qualidadeModel import (
+    LIMITE_RECUPERACAO,
+    TEXTO_MENOR_LD,
+    LIMITE_INCERTEZA,
+    abaixo_do_ld,
+    classificar,
+    ld_de_referencia,
+    recuperacao,
+    recuperacao_fora,
+)
 from resource_utils import resource_path
+from views import tema
+
+
+def _icone(nome, tamanho=18):
+    return ctk.CTkImage(light_image=Image.open(resource_path("imagens", "icones", nome)), size=(tamanho, tamanho))
 
 
 class ConcentracaoView(ctk.CTkFrame):
+    """
+    Seções ENTRADA e CÁLCULO do menu do alvo. slot_padroes recebe o botão "Padrões certificados"
+    (montado pelo PadraoVM); as SAÍDAS ficam na caixa montada pelo ConcentracaoVM.
+    """
+
     def __init__(self, master):
-        super().__init__(master)
+        super().__init__(master, fg_color="transparent")
 
-        # Carregando ícone
-        icone_pasta = ctk.CTkImage(
-            light_image=Image.open(resource_path("imagens", "icones", "pasta.png")),
-            size=(20, 20),
-        )
-        icone_calcular = ctk.CTkImage(
-            light_image=Image.open(resource_path("imagens", "icones", "calcular.png")),
-            size=(20, 20),
-        )
-
+        tema.rotulo_secao(self, "Entrada", fill="x", pady=(4, 6))
         self.selecionar_arquivos = ctk.CTkButton(
-            self, text="Selecionar Arquivos", image=icone_pasta, compound="left", font=("Arial", 12)
+            self, text="Selecionar arquivos", image=_icone("pasta.png"), compound="left", anchor="w", height=36,
+            **tema.BOTAO_SECUNDARIO,
         )
-        self.selecionar_arquivos.pack(pady=(15, 10), fill="x", padx=20)
+        self.selecionar_arquivos.pack(pady=(0, 6), fill="x")
 
         # ficha de informação (.docx) com os nomes das amostras; o lápis edita os nomes sem ficha
-        icone_ficha = ctk.CTkImage(
-            light_image=Image.open(resource_path("imagens", "icones", "file.png")),
-            size=(20, 20),
-        )
         linha_ficha = ctk.CTkFrame(self, fg_color="transparent")
-        linha_ficha.pack(pady=(0, 10), fill="x", padx=20)
-        self.editar_nomes = ctk.CTkButton(linha_ficha, text="✎", width=32, font=("Arial", 14))
+        linha_ficha.pack(pady=(0, 6), fill="x")
+        self.editar_nomes = ctk.CTkButton(linha_ficha, text="✎", width=36, height=36, **tema.BOTAO_SECUNDARIO)
         self.editar_nomes.pack(side="right", padx=(6, 0))
         self.ler_ficha = ctk.CTkButton(
-            linha_ficha, text="Ficha de informação", image=icone_ficha, compound="left", font=("Arial", 12)
+            linha_ficha, text="Ficha de informação", image=_icone("file.png"), compound="left", anchor="w",
+            height=36, **tema.BOTAO_SECUNDARIO,
         )
         self.ler_ficha.pack(side="left", fill="x", expand=True)
+        self.slot_padroes = ctk.CTkFrame(self, fg_color="transparent", height=1)
+        self.slot_padroes.pack(fill="x")
 
         # cálculos extras, feitos junto com o Calcular quando marcados
-        self.label_extras = ctk.CTkLabel(self, text="Incluir no cálculo:", font=("Arial", 12, "bold"), anchor="w")
-        self.label_extras.pack(pady=(10, 0), fill="x", padx=20)
-
-        self.lista_extras = ctk.CTkFrame(self, fg_color="#2b2b2b")
-        self.lista_extras.pack(pady=(5, 10), fill="x", padx=20)
+        tema.rotulo_secao(self, "Cálculo", fill="x", pady=(18, 6))
+        self.lista_extras = ctk.CTkFrame(self, fg_color="transparent")
+        self.lista_extras.pack(fill="x")
 
         self.var_z_score = ctk.BooleanVar(value=False)
         self.check_z_score = ctk.CTkCheckBox(
-            self.lista_extras, text="Z'-Score", font=("Arial", 12), variable=self.var_z_score
+            self.lista_extras, text="Z'-Score", variable=self.var_z_score, checkbox_width=18, checkbox_height=18,
         )
-        self.check_z_score.pack(anchor="w", padx=10, pady=(8, 4))
+        self.check_z_score.pack(anchor="w", pady=(0, 8))
 
+        # a Sensibilidade precisa do tempo de contagem: fica ao lado, lembrado entre as sessões
+        linha_sensibilidade = ctk.CTkFrame(self.lista_extras, fg_color="transparent")
+        linha_sensibilidade.pack(fill="x")
         self.var_sensibilidade = ctk.BooleanVar(value=False)
         self.check_sensibilidade = ctk.CTkCheckBox(
-            self.lista_extras, text="Sensibilidade", font=("Arial", 12), variable=self.var_sensibilidade
+            linha_sensibilidade, text="Sensibilidade", variable=self.var_sensibilidade, checkbox_width=18,
+            checkbox_height=18,
         )
-        self.check_sensibilidade.pack(anchor="w", padx=10, pady=(4, 8))
+        self.check_sensibilidade.pack(side="left")
+        ctk.CTkLabel(linha_sensibilidade, text="s", text_color=tema.TEXTO_2).pack(side="right", padx=(4, 0))
+        self.tempo_contagem = ctk.CTkEntry(linha_sensibilidade, width=56, height=26, placeholder_text="tempo")
+        self.tempo_contagem.pack(side="right")
 
         self.calcular = ctk.CTkButton(
             self,
-            text="Calcular",
-            font=("Arial Black", 12),
+            text="Calcular   F5",
             state="disabled",
-            fg_color="#0D740F",
-            text_color="#FFFFFF",
             command=None,
-            image=icone_calcular,
+            height=42,
+            **tema.BOTAO_PRINCIPAL,
+            image=_icone("calcular.png", 18),
             compound="left",
         )
-        self.calcular.pack(pady=10, fill="x", padx=20)
+        self.calcular.pack(pady=(14, 6), fill="x")
+
+        # o próximo passo (o que falta para calcular) ou o estado do cálculo
+        linha_status = ctk.CTkFrame(self, fg_color="transparent")
+        linha_status.pack(fill="x")
+        self.bolinha_status = ctk.CTkLabel(linha_status, text="●", font=tema.fonte(11), width=14, anchor="nw")
+        self.bolinha_status.pack(side="left", anchor="n", pady=(1, 0))
+        self.status = ctk.CTkLabel(
+            linha_status, text="", font=tema.fonte(12), text_color=COR_STATUS["info"], wraplength=186,
+            justify="left", anchor="w",
+        )
+        self.status.pack(side="left", fill="x", expand=True, padx=(4, 0))
+
+    def mostrar_status(self, texto, tipo="info"):
+        """tipo: "info", "pronto", "feito" ou "atencao" (a cor do texto e da bolinha)."""
+        cor = COR_STATUS.get(tipo, COR_STATUS["info"])
+        self.status.configure(text=texto, text_color=cor)
+        self.bolinha_status.configure(text_color=cor)
+
+
+COR_STATUS = {"info": tema.APAGADO, "pronto": tema.DESTAQUE, "feito": tema.OK, "atencao": tema.ATENCAO}
+
 
 def _chave_ordem(chave):
     """Ordena por número atômico e, no mesmo elemento, pela energia."""
@@ -124,19 +163,6 @@ def _formatar_ld(valor):
     return _formatar_numero(valor)
 
 
-def _ld_referencia(ld_resultado, nome_amostra, elemento, nome_padrao):
-    """LD da própria amostra; se não houver, o do padrão; senão, o primeiro disponível."""
-    for nome in (nome_amostra, nome_padrao):
-        valor = _para_float((ld_resultado.get(nome) or {}).get(elemento))
-        if valor is not None:
-            return valor
-    for dados in ld_resultado.values():
-        valor = _para_float((dados or {}).get(elemento))
-        if valor is not None:
-            return valor
-    return None
-
-
 class ConcentracaoResultadoView(ctk.CTkFrame):
     """Resultados em formato de planilha, com uma aba para cada tipo de cálculo."""
 
@@ -144,23 +170,37 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
     ABA_Z_SCORE = "Z'-Score"
     ABA_SENSIBILIDADE = "Sensibilidade"
 
-    COR_FUNDO = "#2b2b2b"
-    COR_LISTRA = "#333333"
-    COR_LD = ("#22303f", "#9ECBFF")  # (fundo, texto)
-    COR_ABAIXO_LD = ("#5a1e1e", "#FF8A8A")  # valores <= 3xLD
-    COR_INCERTEZA_ALTA = ("#5a3a12", "#FFB86B")  # erro >= 40% do valor
-    COR_AMBOS = ("#5a1e1e", "#FFE135")  # <= 3xLD e erro >= 40%: fundo vermelho, texto amarelo
+    COR_FUNDO = tema.SUPERFICIE
+    COR_LISTRA = tema.SUPERFICIE_2
+    COR_LD = (tema.LD_FUNDO, tema.LD_TEXTO)  # (fundo, texto)
+    COR_ABAIXO_LD = (tema.ERRO_FUNDO, tema.ERRO_TEXTO)  # valores <= 3xLD
+    COR_INCERTEZA_ALTA = (tema.ATENCAO_FUNDO, tema.ATENCAO)  # erro >= 40% do valor
+    COR_AMBOS = (tema.ERRO_FUNDO, tema.AMBOS_TEXTO)  # <= 3xLD e erro >= 40%: fundo vermelho, texto amarelo
+    COR_RECUPERACAO = (tema.OK_FUNDO, tema.OK_TEXTO)  # linha de recuperação de um material certificado medido como amostra
+    COR_RECUPERACAO_FORA = (tema.ATENCAO_FUNDO, tema.ATENCAO)  # recuperação fora de 100% ± LIMITE_RECUPERACAO
 
-    LIMITE_INCERTEZA = 0.40
+    LIMITE_INCERTEZA = LIMITE_INCERTEZA
 
-    def __init__(self, master):
+    _abertas = []  # todas as tabelas: a opção "< LD" vale para todas ao mesmo tempo
+
+    def __init__(self, master, ao_grafico_sensibilidade=None):
+        """ao_grafico_sensibilidade(): botão "Sensibilidade × Z", que aparece com a aba Sensibilidade."""
         super().__init__(master)
+        self.ao_grafico_sensibilidade = ao_grafico_sensibilidade
+        ConcentracaoResultadoView._abertas.append(self)
+        self.bind("<Destroy>", self._ao_destruir, add="+")
 
         # a legenda vai primeiro (embaixo) para não ser empurrada para fora pelas abas
         self._criar_legenda()
 
         # seletor de abas: só aparece quando houver mais de uma tabela
-        self.seletor = ctk.CTkSegmentedButton(self, values=[], command=self._mostrar_aba)
+        self.barra_abas = ctk.CTkFrame(self, fg_color="transparent")
+        self.seletor = ctk.CTkSegmentedButton(self.barra_abas, values=[], command=self._mostrar_aba)
+        self.seletor.pack(side="left", expand=True)
+        self.botao_grafico_sensibilidade = ctk.CTkButton(
+            self.barra_abas, text="Gráfico: sensibilidade × Z", width=180, height=26, font=tema.fonte(12),
+            command=lambda: self.ao_grafico_sensibilidade and self.ao_grafico_sensibilidade(),
+        )
 
         self.area = ctk.CTkFrame(self, fg_color=self.COR_FUNDO)
         self.area.pack(fill="both", expand=True, padx=10, pady=(10, 5))
@@ -173,12 +213,37 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
 
         # nomes das amostras ({código: nome}) e os últimos dados mostrados, para redesenhar quando os nomes mudam
         self.nomes = {}
+        self.certificados = {}  # {arquivo padrão: padrão certificado}, para a recuperação
         self._dados_concentracoes = None
         self._dados_sensibilidade = None
 
+    def _ao_destruir(self, evento):
+        if evento.widget is self and self in ConcentracaoResultadoView._abertas:
+            ConcentracaoResultadoView._abertas.remove(self)
+
     def _criar_legenda(self):
+        # 2ª linha (embaixo): recuperação, a opção "< LD" e a dica do Ctrl+C
+        linha2 = ctk.CTkFrame(self, fg_color="transparent")
+        linha2.pack(side="bottom", fill="x", padx=15, pady=(0, 5))
+        ctk.CTkLabel(
+            linha2, text="", width=14, height=14, corner_radius=3, fg_color=self.COR_RECUPERACAO[0],
+        ).pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(
+            linha2, text="Recuperação (%)", font=tema.fonte(12), text_color=self.COR_RECUPERACAO[1],
+        ).pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(
+            linha2, text=f"fora de 100 ± {LIMITE_RECUPERACAO * 100:.0f}%", font=tema.fonte(12),
+            text_color=self.COR_RECUPERACAO_FORA[1],
+        ).pack(side="left", padx=(0, 18))
+        self.var_menor_ld = ctk.BooleanVar(master=self, value=carregar_mostrar_menor_ld())
+        ctk.CTkCheckBox(
+            linha2, text="Mostrar \"< LD\" abaixo do LD (vale também no Excel)",
+            variable=self.var_menor_ld, command=self._trocar_menor_ld, font=tema.fonte(12),
+            checkbox_width=18, checkbox_height=18,
+        ).pack(side="left", padx=(0, 18))
+
         legenda = ctk.CTkFrame(self, fg_color="transparent")
-        legenda.pack(side="bottom", fill="x", padx=15, pady=(0, 5))
+        legenda.pack(side="bottom", fill="x", padx=15, pady=(0, 2))
 
         itens = [
             (self.COR_LD, "LD (limite de detecção)"),
@@ -189,21 +254,21 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
             ctk.CTkLabel(
                 legenda, text="", width=14, height=14, corner_radius=3, fg_color=fundo,
             ).pack(side="left", padx=(0, 6))
-            ctk.CTkLabel(legenda, text=texto, font=("Arial", 12), text_color=texto_cor).pack(side="left", padx=(0, 18))
+            ctk.CTkLabel(legenda, text=texto, font=tema.fonte(12), text_color=texto_cor).pack(side="left", padx=(0, 18))
 
         ctk.CTkLabel(
-            legenda, text=MARCADOR_AMBOS.strip(), font=("Arial", 13, "bold"), text_color=self.COR_AMBOS[1],
+            legenda, text=MARCADOR_AMBOS.strip(), font=tema.fonte(13, "bold"), text_color=self.COR_AMBOS[1],
         ).pack(side="left", padx=(0, 6))
         ctk.CTkLabel(
             legenda, text=f"≤ 3×LD e incerteza ≥ {self.LIMITE_INCERTEZA:.0%}",
-            font=("Arial", 12), text_color=self.COR_AMBOS[1],
+            font=tema.fonte(12), text_color=self.COR_AMBOS[1],
         ).pack(side="left", padx=(0, 18))
 
         ctk.CTkLabel(
-            legenda,
-            text="Ctrl+C copia as células selecionadas (ou a tabela inteira) para o Excel.",
-            font=("Arial", 11),
-            text_color="#8a8a8a",
+            linha2,
+            text="Ctrl+C copia para o Excel",
+            font=tema.fonte(11),
+            text_color=tema.APAGADO,
         ).pack(side="right")
 
     def _criar_aba(self, nome):
@@ -218,17 +283,17 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
             theme="dark blue",
             show_row_index=False,
             show_top_left=False,
-            font=("Arial", 12, "normal"),
-            header_font=("Arial", 12, "bold"),
+            font=tema.fonte(12),
+            header_font=tema.fonte(12, "bold"),
             default_row_height=26,
             default_header_height=28,
             outline_thickness=0,
             table_bg=self.COR_FUNDO,
-            table_fg="#DCE4EE",
-            table_grid_fg="#3a3a3a",
-            header_bg="#1f1f1f",
-            header_fg="#FFFFFF",
-            header_grid_fg="#3a3a3a",
+            table_fg=tema.TEXTO,
+            table_grid_fg=tema.BORDA_SUAVE,
+            header_bg=tema.MARINHO,
+            header_fg=tema.TEXTO,
+            header_grid_fg=tema.BORDA_SUAVE,
             frame_bg=self.COR_FUNDO,
             vertical_scroll_troughcolor=self.COR_FUNDO,
             horizontal_scroll_troughcolor=self.COR_FUNDO,
@@ -263,14 +328,28 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
     def _atualizar_seletor(self):
         if len(self.abas) > 1:
             self.seletor.configure(values=list(self.abas))
-            if not self.seletor.winfo_manager():
-                self.seletor.pack(before=self.area, pady=(5, 0))
+            if not self.barra_abas.winfo_manager():
+                self.barra_abas.pack(before=self.area, fill="x", padx=10, pady=(5, 0))
         else:
-            self.seletor.pack_forget()
+            self.barra_abas.pack_forget()
+        if self.ABA_SENSIBILIDADE in self.abas and self.ao_grafico_sensibilidade:
+            self.botao_grafico_sensibilidade.pack(side="right")
+        else:
+            self.botao_grafico_sensibilidade.pack_forget()
 
     def _mostrar_aba(self, nome):
         self.abas[nome].tkraise()
         self.seletor.set(nome)
+
+    def _trocar_menor_ld(self):
+        """A opção vale para todas as tabelas abertas (e para o Excel): redesenha cada uma com ela."""
+        mostrar = self.var_menor_ld.get()
+        salvar_mostrar_menor_ld(mostrar)
+        for view in list(ConcentracaoResultadoView._abertas):
+            if view is not self:
+                view.var_menor_ld.set(mostrar)
+            if view._dados_concentracoes is not None:
+                view._preencher_concentracoes(*view._dados_concentracoes)
 
     def _preencher(self, tabela, colunas, linhas, celulas_destacadas=None, colunas_texto=1):
         """
@@ -297,6 +376,9 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
         for indice, (_, tag) in enumerate(linhas):
             if tag == "ld":
                 tabela.highlight_rows(indice, bg=self.COR_LD[0], fg=self.COR_LD[1], redraw=False)
+                continue
+            if tag == "recuperacao":
+                tabela.highlight_rows(indice, bg=self.COR_RECUPERACAO[0], fg=self.COR_RECUPERACAO[1], redraw=False)
                 continue
             if listradas % 2 == 1:
                 tabela.highlight_rows(indice, bg=self.COR_LISTRA, redraw=False)
@@ -362,11 +444,15 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
     # mostrar resultados como planilha
     def mostrar_resultados(
         self, concentracoes, ld_resultado=None, unidades=None, nome_padrao=None, erros=None, padrao_certificado=None,
+        certificados=None,
     ):
         """
         erros: mesma estrutura de concentracoes, com o erro propagado de cada valor.
         padrao_certificado: {"nome": ..., "elementos": {...}}; mostrado na linha do padrão quando ele não é amostra.
+        certificados: {arquivo: padrão certificado} dos arquivos marcados como Padrão. Um deles medido como
+        amostra (que não seja o padrão desta tabela) ganha, logo abaixo, a linha de recuperação.
         """
+        self.certificados = dict(certificados or {})
         # resultados anteriores de Z'-Score e Sensibilidade não valem mais
         self._remover_aba(self.ABA_Z_SCORE)
         self._remover_aba(self.ABA_SENSIBILIDADE)
@@ -377,6 +463,7 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
         self._mostrar_aba(self.ABA_CONCENTRACOES)
 
     def _preencher_concentracoes(self, concentracoes, ld_resultado, unidades, nome_padrao, erros, padrao_certificado):
+        """Os argumentos de mostrar_resultados (guardados em _dados_concentracoes para redesenhar)."""
         ld_resultado = ld_resultado or {}
         erros = erros or {}
 
@@ -397,6 +484,7 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
         nomes_amostras = [nome for nome, _, _ in amostras]
         com_nome = self._com_nome(nomes_amostras + [nome_padrao])
         primeira = 2 if com_nome else 1  # coluna do primeiro elemento
+        menor_ld = self.var_menor_ld.get()
 
         def inicio(rotulo, amostra=None):
             """Primeiras células da linha: o rótulo e, se houver a coluna, o nome da amostra."""
@@ -441,26 +529,39 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
                 texto = texto_celula(elementos.get(chave), erros_amostra.get(chave))
                 valor = _para_float(elementos.get(chave))
                 erro = _para_float(erros_amostra.get(chave))
-                ld = _ld_referencia(ld_resultado, nome_amostra, simbolo, nome_padrao)
+                ld = ld_de_referencia(ld_resultado, nome_amostra, simbolo, nome_padrao)
+                if menor_ld and abaixo_do_ld(valor, ld):
+                    texto = TEXTO_MENOR_LD
 
-                abaixo_ld = valor is not None and ld is not None and valor <= 3 * ld
-                incerteza_alta = (
-                    valor is not None and erro is not None and valor != 0
-                    and abs(erro / valor) >= self.LIMITE_INCERTEZA
-                )
+                destaque = classificar(valor, erro, ld)
 
                 # vermelho (≤ 3×LD) tem prioridade; com incerteza alta também, ganha o marcador
-                if abaixo_ld and incerteza_alta:
+                if destaque == "ambos":
                     destacadas[(indice_linha, coluna)] = self.COR_AMBOS
-                    texto += MARCADOR_AMBOS
-                elif abaixo_ld:
+                    if texto != TEXTO_MENOR_LD:
+                        texto += MARCADOR_AMBOS
+                elif destaque == "abaixo_ld":
                     destacadas[(indice_linha, coluna)] = self.COR_ABAIXO_LD
-                elif incerteza_alta:
+                elif destaque == "incerteza":
                     destacadas[(indice_linha, coluna)] = self.COR_INCERTEZA_ALTA
 
                 celulas.append(texto)
 
             linhas.append((celulas, None))
+
+            # material certificado medido como amostra: medido / certificado, elemento a elemento
+            certificado = self.certificados.get(nome_amostra) if nome_amostra != nome_padrao else None
+            if certificado:
+                indice_linha = len(linhas)
+                celulas = inicio(f"  ↳ Recuperação (%) · {certificado.get('nome', '')}")
+                for coluna, (chave, simbolo) in enumerate(zip(todos_elementos, simbolos), start=primeira):
+                    percentual = recuperacao(
+                        elementos.get(chave), (unidades or {}).get(simbolo), certificado.get("elementos", {}).get(simbolo)
+                    )
+                    celulas.append("---" if percentual is None else f"{percentual:.1f}%")
+                    if recuperacao_fora(percentual):
+                        destacadas[(indice_linha, coluna)] = self.COR_RECUPERACAO_FORA
+                linhas.append((celulas, "recuperacao"))
 
         colunas = (["Amostra", "Nome"] if com_nome else ["Amostra"]) + [
             _titulo_coluna(e, unidades, contagem) for e in todos_elementos
@@ -508,6 +609,89 @@ class ConcentracaoResultadoView(ctk.CTkFrame):
         self._preencher(self._aba(self.ABA_SENSIBILIDADE), colunas, linhas, colunas_texto=2 if com_nome else 1)
 
 
+class BarraAvisosView(ctk.CTkFrame):
+    """
+    Acima dos resultados: a faixa de "resultados desatualizados" (a seleção mudou depois do Calcular)
+    e o botão com os avisos do último cálculo, para consultar depois que o pop-up fechou.
+    """
+
+    COR_FAIXA = (tema.ATENCAO_FUNDO, tema.ATENCAO)  # (fundo, texto)
+
+    def __init__(self, master, antes=None):
+        """antes: o widget que fica logo abaixo da barra (os resultados)."""
+        super().__init__(master, fg_color="transparent", height=10)
+        self.antes = antes
+        self.avisos = []  # [(origem, texto)]
+
+        self.faixa = ctk.CTkLabel(
+            self, text="", font=tema.fonte(12, "bold"), fg_color=self.COR_FAIXA[0], text_color=self.COR_FAIXA[1],
+            corner_radius=6, anchor="w", height=28,
+        )
+        self.botao_avisos = ctk.CTkButton(
+            self, text="", width=110, height=28, font=tema.fonte(12), fg_color=tema.BORDA_SUAVE, hover_color=tema.CONTROLE_HOVER,
+            command=self._abrir_avisos,
+        )
+        self._atualizar()
+
+    def mostrar_desatualizado(self, texto):
+        """texto vazio esconde a faixa."""
+        self.faixa.configure(text=f"  ⚠  {texto}" if texto else "")
+        self._atualizar()
+
+    def definir_avisos(self, avisos):
+        """avisos: [(origem, texto)], substituindo os anteriores (cada cálculo tem os seus)."""
+        self.avisos = list(avisos)
+        self._atualizar()
+
+    def _atualizar(self):
+        for widget in (self.faixa, self.botao_avisos):
+            widget.pack_forget()
+        if self.avisos:
+            n = len(self.avisos)
+            self.botao_avisos.configure(text=f"⚠ {n} aviso" if n == 1 else f"⚠ {n} avisos")
+            self.botao_avisos.pack(side="right", padx=(8, 0))
+        if self.faixa.cget("text"):
+            self.faixa.pack(side="left", fill="x", expand=True)
+        if self.avisos or self.faixa.cget("text"):
+            opcoes = {"before": self.antes} if self.antes is not None and self.antes.winfo_manager() else {}
+            self.pack(side="top", fill="x", padx=10, pady=(8, 0), **opcoes)
+        else:
+            self.pack_forget()
+
+    def _abrir_avisos(self):
+        JanelaAvisos(self, self.avisos)
+
+
+class JanelaAvisos(ctk.CTkToplevel):
+    """Lista dos avisos do último cálculo (os mesmos do pop-up), agrupados pela origem."""
+
+    def __init__(self, master, avisos):
+        super().__init__(master)
+        tema.aplicar_icone(self)
+        self.title("Avisos")
+        self.geometry("620x420")
+        texto = ctk.CTkTextbox(self, font=tema.fonte(13), wrap="word")
+        texto.pack(fill="both", expand=True, padx=12, pady=12)
+        origens = []
+        for origem, _ in avisos:
+            if origem not in origens:
+                origens.append(origem)
+        for origem in origens:
+            texto.insert("end", f"{origem}\n")
+            for o, aviso in avisos:
+                if o == origem:
+                    texto.insert("end", f"  • {aviso}\n\n")
+        texto.configure(state="disabled")
+        ctk.CTkButton(self, text="Fechar", width=100, command=self.destroy).pack(pady=(0, 12))
+        self.transient(master.winfo_toplevel())
+        self.after(50, self._focar)
+
+    def _focar(self):
+        self.lift()
+        self.focus_force()
+        self.grab_set()
+
+
 class ResultadosPadroesView(ctk.CTkFrame):
     """
     Um ConcentracaoResultadoView para cada padrão, com um seletor no topo para alternar entre eles.
@@ -518,7 +702,7 @@ class ResultadosPadroesView(ctk.CTkFrame):
         super().__init__(master, fg_color="transparent")
 
         self.barra = ctk.CTkFrame(self, fg_color="transparent")
-        ctk.CTkLabel(self.barra, text="Padrão:", font=("Arial", 14, "bold")).pack(side="left", padx=(10, 8))
+        ctk.CTkLabel(self.barra, text="Padrão:", font=tema.fonte(14, "bold")).pack(side="left", padx=(10, 8))
         self.seletor = ctk.CTkSegmentedButton(self.barra, values=[], command=self._mostrar_padrao)
         self.seletor.pack(side="left")
 
@@ -526,12 +710,19 @@ class ResultadosPadroesView(ctk.CTkFrame):
         self.rotulos = {}  # nome do padrão -> rótulo
         self.nomes = {}  # nomes das amostras ({código: nome}), repassados a cada padrão
         self.ativo = None
+        self.ao_grafico_sensibilidade = None  # ao_grafico_sensibilidade(nome do padrão), definido pelo VM
         self._criar_views([None])
 
     def _criar_views(self, rotulos):
         for view in self.views.values():
             view.destroy()
-        self.views = {rotulo: ConcentracaoResultadoView(self) for rotulo in rotulos}
+        nomes_por_rotulo = {rotulo: nome for nome, rotulo in self.rotulos.items()}
+        self.views = {
+            rotulo: ConcentracaoResultadoView(
+                self, ao_grafico_sensibilidade=lambda n=nomes_por_rotulo.get(rotulo): self._grafico_sensibilidade(n)
+            )
+            for rotulo in rotulos
+        }
 
         # o seletor só aparece quando houver mais de um padrão
         if len(rotulos) > 1:
@@ -542,6 +733,15 @@ class ResultadosPadroesView(ctk.CTkFrame):
 
         self.ativo = None
         self._mostrar_padrao(rotulos[0])
+
+    def _grafico_sensibilidade(self, nome_padrao):
+        if self.ao_grafico_sensibilidade and nome_padrao:
+            self.ao_grafico_sensibilidade(nome_padrao)
+
+    def limpar(self):
+        """Volta ao estado inicial: uma tabela vazia, sem seletor de padrão."""
+        self.rotulos = {}
+        self._criar_views([None])
 
     def _mostrar_padrao(self, rotulo):
         if self.ativo is not None and self.ativo in self.views:
@@ -558,6 +758,7 @@ class ResultadosPadroesView(ctk.CTkFrame):
         self.rotulos = {r.nome: r.rotulo for r in resultados_por_padrao}
         anterior = self.ativo
         self._criar_views([r.rotulo for r in resultados_por_padrao])
+        certificados = {_nome_arquivo(r.arquivo_padrao): r.c_padrao for r in resultados_por_padrao if r.c_padrao}
 
         for r in resultados_por_padrao:
             self._view(r).nomes = self.nomes
@@ -568,6 +769,7 @@ class ResultadosPadroesView(ctk.CTkFrame):
                 _nome_arquivo(r.arquivo_padrao),
                 erros=r.erros_concentracao,
                 padrao_certificado=r.c_padrao,
+                certificados=certificados,
             )
 
         # recalculando, continua no padrão que estava aberto
@@ -588,22 +790,37 @@ class ResultadosPadroesView(ctk.CTkFrame):
             self._view(r).mostrar_sensibilidade(r.sensibilidade_resultado)
 
 
+def chave_natural(texto):
+    """Ordem "de gente": F2 antes de F10 e 290426ab antes de 290426ac, sem diferenciar maiúsculas."""
+    return [int(parte) if parte.isdigit() else parte.lower() for parte in re.split(r"(\d+)", str(texto))]
+
+
 class ListaArquivosView(ctk.CTkScrollableFrame):
     """Lista dos arquivos selecionados, onde o usuário marca os Padrões (com o padrão certificado) e as Amostras."""
 
     MAX_PADROES = 2
     SEM_PADRAO = "Nenhum padrão cadastrado"
 
-    def __init__(self, master, ao_alterar=None, ao_escolher_pdf=None, nomes_padroes=None):
-        super().__init__(master, fg_color="#2b2b2b", height=200)
+    def __init__(self, master, ao_alterar=None, ao_escolher_pdf=None, nomes_padroes=None, sugerir_certificado=None,
+                 ao_vincular_pdfs=None, ao_soltar=None):
+        """
+        sugerir_certificado(caminho, usados): certificado para um arquivo recém-marcado como Padrão, ou None.
+        ao_vincular_pdfs(): botão "Vincular PDFs" do cabeçalho. ao_soltar(caminhos): arquivos arrastados para a lista.
+        """
+        super().__init__(master, fg_color=tema.SUPERFICIE, height=200)
         self.ao_alterar = ao_alterar
         self.ao_escolher_pdf = ao_escolher_pdf
+        self.sugerir_certificado = sugerir_certificado
+        self.ao_vincular_pdfs = ao_vincular_pdfs
+        self.ao_soltar = ao_soltar
         self.nomes_padroes = list(nomes_padroes or [])
         self.linhas = []  # (caminho, var_padrao, var_amostra)
         self.pdfs = {}  # índice da linha -> caminho do FullReport (.pdf) para o LD
         self.botoes_pdf = {}  # índice da linha -> (botão escolher, botão remover)
         self.combos_padrao = {}  # índice da linha -> combobox do padrão certificado
         self.labels_nome = {}  # índice da linha -> label com o nome da amostra (ficha de informação)
+        self.nomes = {}  # {código: nome} mostrados na coluna Nome
+        self.ordem = None  # ("arquivo" ou "nome", decrescente) da última ordenação pelo cabeçalho
         self.grid_columnconfigure(6, weight=1)  # coluna vazia: mantém o LD colado no nome do arquivo
         self.mostrar_vazio()
 
@@ -627,20 +844,40 @@ class ListaArquivosView(ctk.CTkScrollableFrame):
     def mostrar_vazio(self):
         self.limpar()
         ctk.CTkLabel(
-            self, text="Nenhum arquivo selecionado. Use \"Selecionar Arquivos\" no Menu.", font=("Arial", 14)
-        ).grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky="w")
+            self, text="Nenhum arquivo selecionado. Use \"Selecionar Arquivos\" no Menu (Ctrl+O) "
+                       "ou arraste os arquivos .txt para cá.", font=tema.fonte(14)
+        ).grid(row=0, column=0, columnspan=6, padx=10, pady=10, sticky="w")
         self._voltar_ao_topo()
+        self._registrar_soltar()
 
-    def carregar(self, caminhos, nomes=None):
-        """nomes: {código: nome} da ficha de informação, mostrados ao lado do arquivo."""
+    def carregar(self, caminhos, nomes=None, ordem=None):
+        """
+        nomes: {código: nome} da ficha de informação, mostrados ao lado do arquivo.
+        ordem: a ordenação que os caminhos já seguem (para a setinha do cabeçalho), ou None.
+        """
         self.limpar()
+        self.ordem = ordem
 
-        # cabeçalho
-        colunas = ["Padrão", "Amostra", "Arquivo", "Nome", "Padrão Certificado", "Limite de Detecção"]
+        # cabeçalho; "Arquivo" e "Nome" ordenam a lista ao clicar (de novo, inverte)
+        colunas = ["Padrão", "Amostra", "Arquivo", "Nome", "Padrão Certificado"]
+        ordenaveis = {"Arquivo": "arquivo", "Nome": "nome"}
         for col, texto in enumerate(colunas):
-            ctk.CTkLabel(self, text=texto, font=("Arial Black", 13)).grid(
-                row=0, column=col, padx=10, pady=(5, 5), sticky="w"
-            )
+            chave = ordenaveis.get(texto)
+            if chave and ordem and ordem[0] == chave:
+                texto += " ▼" if ordem[1] else " ▲"
+            rotulo = ctk.CTkLabel(self, text=texto, font=tema.fonte(13, "bold"))
+            rotulo.grid(row=0, column=col, padx=10, pady=(5, 5), sticky="w")
+            if chave:
+                rotulo.configure(cursor="hand2")
+                rotulo.bind("<Button-1>", lambda _e, c=chave: self.ordenar(c))
+        # LD: o vínculo continua por linha; o botão só procura de uma vez os PDFs com o mesmo nome do .txt
+        cabecalho_ld = ctk.CTkFrame(self, fg_color="transparent")
+        cabecalho_ld.grid(row=0, column=5, padx=10, pady=(5, 5), sticky="w")
+        ctk.CTkLabel(cabecalho_ld, text="Limite de Detecção", font=tema.fonte(13, "bold")).pack(side="left")
+        ctk.CTkButton(
+            cabecalho_ld, text="Vincular PDFs", width=96, height=22, font=tema.fonte(11),
+            fg_color=tema.CONTROLE, hover_color=tema.BORDA, command=self._vincular_pdfs,
+        ).pack(side="left", padx=(10, 0))
 
         for indice, caminho in enumerate(caminhos):
             var_padrao = ctk.BooleanVar(value=False)
@@ -654,11 +891,11 @@ class ListaArquivosView(ctk.CTkScrollableFrame):
                 self, text="", width=24, variable=var_amostra, command=self._notificar
             ).grid(row=indice + 1, column=1, padx=(26, 10), pady=3)
 
-            ctk.CTkLabel(self, text=os.path.basename(caminho), font=("Arial", 14)).grid(
+            ctk.CTkLabel(self, text=os.path.basename(caminho), font=tema.fonte(14)).grid(
                 row=indice + 1, column=2, padx=10, pady=3, sticky="w"
             )
 
-            label_nome = ctk.CTkLabel(self, text="", font=("Arial", 13), text_color="#B0B0B0")
+            label_nome = ctk.CTkLabel(self, text="", font=tema.fonte(13), text_color=tema.TEXTO_2)
             label_nome.grid(row=indice + 1, column=3, padx=10, pady=3, sticky="w")
             self.labels_nome[indice] = label_nome
 
@@ -669,10 +906,10 @@ class ListaArquivosView(ctk.CTkScrollableFrame):
                 height=26,
                 state="readonly",
                 values=self.nomes_padroes or [self.SEM_PADRAO],
-                font=("Arial", 12),
-                button_color="#213A57",
-                border_color="#213A57",
-                fg_color="#375270",
+                font=tema.fonte(12),
+                button_color=tema.BORDA,
+                border_color=tema.BORDA,
+                fg_color=tema.CONTROLE,
                 command=lambda _escolha: self._notificar(),
             )
             combo_padrao.grid(row=indice + 1, column=4, padx=10, pady=3, sticky="w")
@@ -683,13 +920,13 @@ class ListaArquivosView(ctk.CTkScrollableFrame):
             celula_ld.grid(row=indice + 1, column=5, padx=10, pady=3, sticky="w")
 
             botao_pdf = ctk.CTkButton(
-                celula_ld, width=170, height=26, font=("Arial", 12),
+                celula_ld, width=170, height=26, font=tema.fonte(12),
                 command=lambda i=indice: self._escolher_pdf(i),
             )
             botao_pdf.pack(side="left")
 
             botao_remover = ctk.CTkButton(
-                celula_ld, text="✕", width=26, height=26, fg_color="#8B1E1E", hover_color="#B22222",
+                celula_ld, text="✕", width=26, height=26, fg_color=tema.ERRO_FUNDO, hover_color=tema.ERRO_HOVER,
                 command=lambda i=indice: self.definir_pdf(i, None),
             )
 
@@ -699,9 +936,99 @@ class ListaArquivosView(ctk.CTkScrollableFrame):
 
         self.mostrar_nomes(nomes)
         self._voltar_ao_topo()
+        self._registrar_soltar()
+
+    def _vincular_pdfs(self):
+        if self.ao_vincular_pdfs:
+            self.ao_vincular_pdfs()
+
+    def _registrar_soltar(self):
+        """
+        Arrastar e soltar (tkinterdnd2): a lista inteira, com tudo o que está dentro, aceita arquivos.
+        Sem a biblioteca carregada na janela principal, não faz nada.
+        """
+        if not self.ao_soltar:
+            return
+
+        def registrar(widget):
+            try:
+                widget.drop_target_register("DND_Files")
+                widget.dnd_bind("<<Drop>>", self._soltou)
+            except (AttributeError, tkinter.TclError):
+                return False
+            for filho in widget.winfo_children():
+                registrar(filho)
+            return True
+
+        registrar(self._parent_frame)
+
+    def _soltou(self, evento):
+        caminhos = [str(c) for c in self.tk.splitlist(evento.data)]
+        if caminhos:
+            self.after(10, lambda: self.ao_soltar(caminhos))  # fora do callback do tkdnd
+        return evento.action
+
+    def estado(self):
+        """[{arquivo, padrao, amostra, certificado, pdf}] de cada linha, na ordem (para salvar a análise)."""
+        return [
+            {
+                "arquivo": caminho,
+                "padrao": var_padrao.get(),
+                "amostra": var_amostra.get(),
+                "certificado": self.combos_padrao[indice].get() if var_padrao.get() else "",
+                "pdf": self.pdfs.get(indice),
+            }
+            for indice, (caminho, var_padrao, var_amostra) in enumerate(self.linhas)
+        ]
+
+    def restaurar(self, linhas, nomes=None, ordem=None):
+        """Recria a lista a partir de estado() (sem perguntar nada e avisando o VM uma vez só, no fim)."""
+        if not linhas:
+            self.mostrar_vazio()
+            self._notificar()
+            return
+        self.carregar([linha["arquivo"] for linha in linhas], nomes, ordem)
+        for indice, linha in enumerate(linhas):
+            _, var_padrao, var_amostra = self.linhas[indice]
+            var_padrao.set(bool(linha.get("padrao")))
+            var_amostra.set(bool(linha.get("amostra", True)))
+            if var_padrao.get():
+                combo = self.combos_padrao[indice]
+                certificado = linha.get("certificado") or ""
+                combo.set(certificado if certificado in self.nomes_padroes else "")
+                combo.grid()
+            if linha.get("pdf"):
+                self.definir_pdf(indice, linha["pdf"], notificar=False)
+        self._notificar()
+
+    def ordenar(self, coluna):
+        """
+        Reorganiza a lista pelo nome do arquivo ou pelo nome da ficha (sem nome vai para o fim), mantendo
+        as marcações, os certificados e os PDFs de cada linha. Clicar de novo na mesma coluna inverte.
+        """
+        if not self.linhas:
+            return
+        estado = self.estado()
+
+        def ordenado(decrescente):
+            if coluna == "arquivo":
+                return sorted(estado, key=lambda linha: chave_natural(os.path.basename(linha["arquivo"])),
+                              reverse=decrescente)
+
+            def chave(linha):
+                nome = nome_da_amostra(self.nomes, _nome_arquivo(linha["arquivo"]))
+                return chave_natural(nome or os.path.basename(linha["arquivo"]))
+            com_nome = [linha for linha in estado if nome_da_amostra(self.nomes, _nome_arquivo(linha["arquivo"]))]
+            sem_nome = [linha for linha in estado if linha not in com_nome]
+            return sorted(com_nome, key=chave, reverse=decrescente) + sorted(sem_nome, key=chave)
+
+        # crescente; se a lista já estava assim (ou o último clique foi esse), decrescente
+        decrescente = self.ordem == (coluna, False) or ordenado(False) == estado
+        self.restaurar(ordenado(decrescente), self.nomes, ordem=(coluna, decrescente))
 
     def mostrar_nomes(self, nomes):
         """Atualiza a coluna Nome ({código: nome}); arquivo sem nome fica com "—"."""
+        self.nomes = dict(nomes or {})
         for indice, label in self.labels_nome.items():
             label.configure(text=nome_da_amostra(nomes, _nome_arquivo(self.linhas[indice][0])) or "—")
 
@@ -714,12 +1041,16 @@ class ListaArquivosView(ctk.CTkScrollableFrame):
         botao_pdf, botao_remover = self.botoes_pdf[indice]
         if caminho_pdf:
             self.pdfs[indice] = caminho_pdf
-            botao_pdf.configure(text=os.path.basename(caminho_pdf), fg_color="#0D740F", hover_color="#0B5E0C")
+            botao_pdf.configure(
+                text=os.path.basename(caminho_pdf), fg_color=tema.OK_FUNDO, hover_color=tema.OK_HOVER,
+                text_color=tema.OK_TEXTO,
+            )
             botao_remover.pack(side="left", padx=(5, 0))
         else:
             self.pdfs.pop(indice, None)
-            tema = ctk.ThemeManager.theme["CTkButton"]
-            botao_pdf.configure(text="+ Adicionar PDF", fg_color=tema["fg_color"], hover_color=tema["hover_color"])
+            botao_pdf.configure(
+                text="+ Adicionar PDF", fg_color=tema.CONTROLE, hover_color=tema.CONTROLE_HOVER, text_color=tema.TEXTO_2,
+            )
             botao_remover.pack_forget()
         if notificar:
             self._notificar()
@@ -740,11 +1071,12 @@ class ListaArquivosView(ctk.CTkScrollableFrame):
                     f"É possível usar no máximo {self.MAX_PADROES} padrões. Desmarque um deles primeiro.",
                 )
                 return
-            # sugere um padrão certificado ainda não usado pelos outros arquivos padrão
+            # sugere o certificado usado da última vez com esse arquivo; senão, um ainda não usado pelos outros padrões
             usados = {self.combos_padrao[j].get() for j in outros}
             livres = [n for n in self.nomes_padroes if n not in usados]
             if combo.get() not in self.nomes_padroes:
-                combo.set((livres or self.nomes_padroes or [self.SEM_PADRAO])[0])
+                lembrado = self.sugerir_certificado(self.linhas[indice][0], usados) if self.sugerir_certificado else None
+                combo.set(lembrado or (livres or self.nomes_padroes or [self.SEM_PADRAO])[0])
             combo.grid()
             # por padrão, o arquivo padrão deixa de ser amostra (pode ser remarcado)
             var_amostra.set(False)
@@ -778,7 +1110,5 @@ class ListaArquivosView(ctk.CTkScrollableFrame):
 
     def arquivos_amostras(self):
         return [caminho for caminho, _, var_amostra in self.linhas if var_amostra.get()]
-
-
 
 

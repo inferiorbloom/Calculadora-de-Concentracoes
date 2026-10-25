@@ -10,6 +10,17 @@ from models.elementosQuimicos import z_do_elemento
 from models.fichaInformacaoModel import nome_da_amostra
 
 FATOR_PARA_MG_KG = {"mg/kg": 1, "g/kg": 1000}
+FORMATOS = ("png", "svg", "pdf")  # PNG (200 dpi) ou vetorial (SVG, PDF), para artigo
+
+
+def salvar_figura(figura, caminho_sem_extensao, formato="png"):
+    """Grava a figura no formato escolhido (fundo da própria figura). Devolve o caminho com a extensão."""
+    formato = formato if formato in FORMATOS else "png"
+    caminho = f"{caminho_sem_extensao}.{formato}"
+    figura.savefig(caminho, dpi=200, facecolor=figura.get_facecolor(), format=formato)
+    return caminho
+
+
 ALVO_TRACO_AUTOMATICO = 0.05  # "Distribuir automaticamente": traço com cerca de 5% do total
 LIMITE_ERRO_AREA = 30  # %: na tabela avançada, a linha fica vermelha com erro da área a partir daqui
 GRAFICOS = ("majoritario", "traco")  # cada um tem a sua seleção de elementos na tabela avançada
@@ -412,11 +423,12 @@ class GraficosModel:
     def _nome_arquivo(texto):
         return re.sub(r'[\\/:*?"<>|]+', "_", str(texto)).strip() or "grafico"
 
-    def exportar(self, pasta, itens, tipo="anel", base="concentracao", nomes=None):
+    def exportar(self, pasta, itens, tipo="anel", base="concentracao", nomes=None, formato="png"):
         """
         itens: [(subpasta ou None, amostra, valores, n_traco, padrão ou None, excluidos ou None)];
         excluidos como em criar_figuras (os dois últimos são opcionais).
-        Grava "<amostra> - majoritario.png" e, se houver traço, "<amostra> - traco.png" (tema claro, fundo branco).
+        Grava "<amostra> - majoritario.png" e, se houver traço, "<amostra> - traco.png" (tema claro, fundo branco);
+        formato: "png", "svg" ou "pdf" (a extensão acompanha).
         Com nome na ficha, o arquivo vira "<nome> (<código>)", para duas amostras de mesmo nome não se sobrescreverem.
         Com a área normalizada, os nomes ganham " - area" (para não sobrescrever os de concentração).
         Devolve os caminhos.
@@ -436,10 +448,9 @@ class GraficosModel:
             nome = nome_da_amostra(nomes, amostra)
             arquivo = f"{nome} ({amostra})" if nome else amostra
             prefixo = os.path.join(destino, self._nome_arquivo(arquivo) + sufixo)
-            arquivos = [(fig_maj, f"{prefixo} - majoritario.png")]
+            arquivos = [(fig_maj, f"{prefixo} - majoritario")]
             if self.separar(valores, n_traco, excluidos)[2]:
-                arquivos.append((fig_traco, f"{prefixo} - traco.png"))
+                arquivos.append((fig_traco, f"{prefixo} - traco"))
             for figura, caminho in arquivos:
-                figura.savefig(caminho, dpi=200, facecolor=figura.get_facecolor())
-                gravados.append(caminho)
+                gravados.append(salvar_figura(figura, caminho, formato))
         return gravados

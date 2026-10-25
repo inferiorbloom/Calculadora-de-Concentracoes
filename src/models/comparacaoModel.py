@@ -6,7 +6,7 @@ from matplotlib.figure import Figure
 
 from models.elementosQuimicos import z_do_elemento
 from models.fichaInformacaoModel import codigo_amostra, nome_da_amostra
-from models.graficosModel import FATOR_PARA_MG_KG, FONTE, TEMAS
+from models.graficosModel import FATOR_PARA_MG_KG, FONTE, TEMAS, salvar_figura
 from models.leitorArquivoModel import nome_amostra
 
 # Gráficos comparativos, por elemento: as amostras no eixo X e, em cada amostra, uma barra (ou um ponto)
@@ -316,15 +316,17 @@ class ComparacaoModel:
     def _nome_arquivo(texto):
         return re.sub(r'[\\/:*?"<>|]+', "_", str(texto)).strip() or "grafico"
 
-    def exportar(self, pasta, comparacao, estilo="barras"):
-        """Uma imagem por elemento (tema claro): "<Z> <elemento> - <padroes|alvos>.png". Devolve os caminhos."""
+    def exportar(self, pasta, comparacao, estilo="barras", formato="png"):
+        """
+        Uma imagem por elemento (tema claro): "<Z> <elemento> - <padroes|alvos>.png" (ou .svg/.pdf, pelo formato).
+        Devolve os caminhos.
+        """
         os.makedirs(pasta, exist_ok=True)
         gravados = []
         for elemento in self.elementos(comparacao):
             figura = self.criar_figura(comparacao, elemento, estilo, "claro")
             z = z_do_elemento(elemento)
             nome = f"{z:02d} {elemento}" if z < 9999 else elemento
-            caminho = os.path.join(pasta, self._nome_arquivo(f"{nome} - {comparacao.tipo}") + ".png")
-            figura.savefig(caminho, dpi=200, facecolor=figura.get_facecolor())
-            gravados.append(caminho)
+            caminho = os.path.join(pasta, self._nome_arquivo(f"{nome} - {comparacao.tipo}"))
+            gravados.append(salvar_figura(figura, caminho, formato))
         return gravados

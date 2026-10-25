@@ -1,4 +1,3 @@
-import customtkinter as ctk
 import json
 import os
 import shutil
@@ -6,9 +5,10 @@ import shutil
 from resource_utils import ensure_directory, resource_path, user_data_path
 
 
-class Variaveis(ctk.CTkFrame):
-    def __init__(self, master=None):
-        super().__init__(master)
+class Variaveis:
+    """Estado de uma aba de alvo (arquivos, resultados, nomes) e o cadastro de padrões certificados."""
+
+    def __init__(self):
         self.lista_arquivos = []
         # um ResultadoPadrao para cada padrão marcado na lista de arquivos
         self.resultados_por_padrao = []
@@ -26,9 +26,3 @@ class Variaveis(ctk.CTkFrame):
         if os.path.exists(self.path):
             with open(self.path, "r", encoding="utf-8") as f:
                 self.padroes = json.load(f)
-
-    def verificar_estado(self):
-        print("Verificando estado atual das variáveis:")
-        print(f"- Amostras: {self.lista_arquivos}")
-        for resultado in self.resultados_por_padrao:
-            print(f"- Padrão {resultado.rotulo}: LD={'OK' if resultado.resultado_limite else 'Nenhum'}")

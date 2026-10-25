@@ -6,6 +6,11 @@ CHAVE_ULTIMO_DIRETORIO = "ultimo_diretorio"
 CHAVE_ABAS_EXPORTAR = "abas_exportar"
 CHAVE_TIPO_GRAFICO = "tipo_grafico"
 CHAVE_ESTILO_COMPARACAO = "estilo_comparacao"
+CHAVE_TEMPO_CONTAGEM = "tempo_contagem"
+CHAVE_CERTIFICADOS = "certificados_por_arquivo"
+CHAVE_MENOR_LD = "mostrar_menor_ld"
+CHAVE_FORMATO_IMAGEM = "formato_imagem"
+FORMATOS_IMAGEM = ("png", "svg", "pdf")
 
 
 def _ler_config():
@@ -81,3 +86,59 @@ def carregar_estilo_comparacao():
 
 def salvar_estilo_comparacao(estilo):
     _gravar_config(**{CHAVE_ESTILO_COMPARACAO: estilo})
+
+
+def carregar_tempo_contagem():
+    """Último tempo de contagem (texto, como foi digitado) da Sensibilidade, ou ""."""
+    tempo = _ler_config().get(CHAVE_TEMPO_CONTAGEM)
+    return str(tempo) if tempo not in (None, "") else ""
+
+
+def salvar_tempo_contagem(tempo):
+    _gravar_config(**{CHAVE_TEMPO_CONTAGEM: str(tempo)})
+
+
+def carregar_certificados(alvo=None):
+    """
+    Padrão certificado usado da última vez com cada arquivo padrão, de um alvo:
+    {"arquivos": {nome do arquivo: certificado}, "ultimo": certificado ou None}.
+    """
+    dados = _ler_config().get(CHAVE_CERTIFICADOS)
+    dados = dados.get(alvo or "") if isinstance(dados, dict) else None
+    if not isinstance(dados, dict):
+        return {"arquivos": {}, "ultimo": None}
+    arquivos = dados.get("arquivos")
+    return {"arquivos": dict(arquivos) if isinstance(arquivos, dict) else {}, "ultimo": dados.get("ultimo")}
+
+
+def salvar_certificado(alvo, arquivo, certificado):
+    """Lembra o certificado escolhido para o arquivo padrão (pelo nome, sem a pasta) neste alvo."""
+    if not arquivo or not certificado:
+        return
+    todos = _ler_config().get(CHAVE_CERTIFICADOS)
+    todos = todos if isinstance(todos, dict) else {}
+    dados = carregar_certificados(alvo)
+    dados["arquivos"][arquivo] = certificado
+    dados["ultimo"] = certificado
+    todos[alvo or ""] = dados
+    _gravar_config(**{CHAVE_CERTIFICADOS: todos})
+
+
+def carregar_mostrar_menor_ld():
+    """True: valores abaixo do LD aparecem como "< LD" na tabela e no Excel (o padrão é mostrar o valor)."""
+    return _ler_config().get(CHAVE_MENOR_LD) is True
+
+
+def salvar_mostrar_menor_ld(mostrar):
+    _gravar_config(**{CHAVE_MENOR_LD: bool(mostrar)})
+
+
+def carregar_formato_imagem():
+    """Formato das imagens exportadas: "png" (o padrão), "svg" ou "pdf"."""
+    formato = _ler_config().get(CHAVE_FORMATO_IMAGEM)
+    return formato if formato in FORMATOS_IMAGEM else "png"
+
+
+def salvar_formato_imagem(formato):
+    if formato in FORMATOS_IMAGEM:
+        _gravar_config(**{CHAVE_FORMATO_IMAGEM: formato})

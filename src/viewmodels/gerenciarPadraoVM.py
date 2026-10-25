@@ -9,8 +9,7 @@ class Gerenciar_PadraoVM:
         # self.callback_voltar_inicio = callback_voltar_inicio
         self.frame = frame
 
-        self.variaveis = Variaveis(sidebar)
-        # self.variaveis.padroes
+        self.variaveis = Variaveis()
         self.gerenciar_view = Gerenciar_PadraoView(self.sidebar, frame, dynamic_frame, self.variaveis, padrao_view)
 
         self.gerenciar_frame = None
@@ -18,7 +17,7 @@ class Gerenciar_PadraoVM:
 
     def botao_gerenciar(self):
         # Cria e exibe o painel de gerenciamento
-        self.gerenciar_view.botao_gerenciar.pack(side="left", padx=(0, 20), pady=10)
+        self.gerenciar_view.botao_gerenciar.pack(fill="x")
         # self.gerenciar_view.botao_gerenciar.grid(row=0, column=1, sticky="w", padx=10)
         # self.gerenciar_view.botao_gerenciar.configure(command="")
         # self.gerenciar_view.botao_gerenciar.configure(state="disabled")

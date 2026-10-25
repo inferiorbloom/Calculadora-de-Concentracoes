@@ -13,6 +13,7 @@ from models.abaZScoreModel import AbaZScoreModel
 from models.leitorArquivoModel import nome_amostra
 from models.fichaInformacaoModel import nome_da_amostra
 from models.estiloTabelaModel import EstiloTabela
+from models.qualidadeModel import TEXTO_MENOR_LD, abaixo_do_ld, classificar, ld_de_referencia
 
 
 class ExportarModel:
@@ -29,6 +30,66 @@ class ExportarModel:
         self.aba_concentracoes = AbaConcentracoesModel()
         self.aba_sld = AbaSLDModel()
         self.aba_zscore = AbaZScoreModel()
+        # True: valores abaixo do LD saem como "< LD" (sem o erro) em Concentrações e Resultados.
+        # A média e o desvio das estatísticas continuam calculados com os valores medidos.
+        self.menor_ld = False
+
+    @staticmethod
+    def _classes(resultado_padrao):
+        """{(amostra, (elemento, energia)): destaque} de cada valor, com a regra da tabela do programa."""
+        r = resultado_padrao
+        nome_padrao = nome_amostra(r.arquivo_padrao or "")
+        classes = {}
+        for bloco, conc_bloco in (r.concentracoes or {}).items():
+            erros_bloco = (r.erros_concentracao or {}).get(bloco, {})
+            for amostra, valores in conc_bloco.items():
+                for chave, valor in valores.items():
+                    elemento = chave[0] if isinstance(chave, tuple) else chave
+                    ld = ld_de_referencia(r.resultado_limite, amostra, elemento, nome_padrao)
+                    destaque = classificar(valor, erros_bloco.get(amostra, {}).get(chave), ld)
+                    if destaque:
+                        classes[(amostra, chave)] = destaque
+        return classes
+
+    def _destaques(self, resultado_padrao, amostras, elementos_ordenados, primeira_coluna, largura):
+        """
+        {(linha do corpo, coluna): destaque} para EstiloTabela.escrever: cada elemento ocupa `largura` colunas
+        a partir de primeira_coluna, na ordem de elementos_ordenados; as linhas seguem `amostras`.
+        """
+        classes = self._classes(resultado_padrao)
+        destaques = {}
+        for linha, amostra in enumerate(amostras):
+            for k, chave in enumerate(elementos_ordenados):
+                destaque = classes.get((amostra, chave))
+                if destaque:
+                    inicio = primeira_coluna + k * largura
+                    destaques.update({(linha, c): destaque for c in range(inicio, inicio + largura)})
+        return destaques
+
+    def _legenda(self, worksheet, linha, destaques):
+        """Legenda das cores usadas, duas linhas abaixo da tabela (só se algo foi destacado)."""
+        if destaques:
+            self.estilo.escrever_legenda(worksheet, linha + 1, 0, set(destaques.values()))
+
+    def _aplicar_menor_ld(self, df_analise, resultado_padrao, elementos_ordenados, contagem_elementos):
+        """Cópia do df_analise com "< LD" no C (e o erro vazio) das amostras abaixo do LD do elemento."""
+        if not self.menor_ld or df_analise is None or df_analise.empty or not resultado_padrao.resultado_limite:
+            return df_analise
+        df = df_analise.astype(object)  # "< LD" é texto: a coluna deixa de ser só número
+        unidades = resultado_padrao.unidade_padrao or {}
+        nome_padrao = nome_amostra(resultado_padrao.arquivo_padrao or "")
+        for elemento, energia in elementos_ordenados:
+            titulo = montar_titulo_coluna(elemento, energia, unidades.get(elemento, ""), contagem_elementos[elemento] > 1)
+            if (titulo, "C") not in df.columns:
+                continue
+            for amostra in df.index:
+                ld = ld_de_referencia(resultado_padrao.resultado_limite, amostra, elemento, nome_padrao)
+                if abaixo_do_ld(df.at[amostra, (titulo, "C")], ld):
+                    df.at[amostra, (titulo, "C")] = TEXTO_MENOR_LD
+                    for subcoluna in ("Erro", "Erro (%)"):
+                        if (titulo, subcoluna) in df.columns:
+                            df.at[amostra, (titulo, subcoluna)] = ""
+        return df
 
     def _normalizar_valores_para_excel(self, df):
         """Converte valores que parecem numéricos para tipos numéricos reais antes de gravar no Excel."""
@@ -91,16 +152,8 @@ class ExportarModel:
 
         nome_padrao_normalizado = nome_amostra(nome_padrao or "")
 
-        #print(f"\nBuscando {elemento}")
-        #print("nome_padrao =", nome_padrao_normalizado)
-
-        #print("dados desse padrão:")
-        #print(ld_resultado.get(nome_padrao_normalizado))
-
         valor_padrao = ld_resultado.get(nome_padrao_normalizado, {}).get(elemento, "")
 
-        #print("valor encontrado =", valor_padrao)
-        
         if valor_padrao not in ["", None]:
             return valor_padrao
 
@@ -180,8 +233,10 @@ class ExportarModel:
                 self.estilo = EstiloTabela(writer.book)
                 for alvo, resultados_por_padrao in resultados_por_alvo.items():
                     varios_padroes = len(resultados_por_padrao) > 1
+                    self.nomes_atuais = nomes_por_alvo.get(alvo)
                     for resultado_padrao in resultados_por_padrao:
-                        nome = f"{alvo} - {resultado_padrao.nome}" if varios_padroes else alvo
+                        nome_padrao = self._nome_do_padrao(resultado_padrao, self.nomes_atuais)
+                        nome = f"{alvo} - {nome_padrao}" if varios_padroes else alvo
                         self._escrever_resumo(
                             writer, self._nome_aba_unico(nome, usados), resultado_padrao, nomes_por_alvo.get(alvo)
                         )
@@ -200,6 +255,7 @@ class ExportarModel:
         if df.empty:
             return
 
+        df = self._aplicar_menor_ld(df, r, elementos_ordenados, contagem_elementos)
         df = self._normalizar_valores_para_excel(df.drop(columns="Erro (%)", level=1))
         self._escrever_resultados(worksheet, r, df, elementos_ordenados, contagem_elementos, ["C", "Erro"], nomes)
 
@@ -221,6 +277,7 @@ class ExportarModel:
             varios_padroes = len(resultados_por_padrao) > 1
             with pd.ExcelWriter(path, engine="xlsxwriter") as writer:
                 self.estilo = EstiloTabela(writer.book)
+                self.nomes_atuais = nomes_amostras  # nome da ficha do padrão nas abas e na identificação
                 if self.ABA_DADOS in abas_exportar:
                     self._escrever_dados(writer, arquivos, resultados_por_padrao)
                 if self.ABA_SLD in abas_exportar:
@@ -228,13 +285,13 @@ class ExportarModel:
                 if not abas_exportar & set(self.ABAS):
                     return
                 for resultado_padrao in resultados_por_padrao:
-                    abas = self.nomes_abas(resultado_padrao.nome, varios_padroes, usados)
+                    nome_padrao = self._nome_do_padrao(resultado_padrao, nomes_amostras)
+                    abas = self.nomes_abas(nome_padrao, varios_padroes, usados)
                     abas = {base: nome for base, nome in abas.items() if base in abas_exportar}
                     self._escrever_padrao(writer, arquivos, resultado_padrao, abas, nomes_amostras)
 
         caminho_arquivo = self._gravar(_salvar_excel, caminho_arquivo, "amostras")
 
-        print("Exportacao concluida!")
         self.mostrar_popup_sucesso(caminho_arquivo)
 
     def montar_dataframes(self, arquivos, resultado_padrao):
@@ -265,8 +322,15 @@ class ExportarModel:
         return worksheet
 
     @staticmethod
-    def _identificacao(resultado_padrao):
+    def _nome_do_padrao(resultado_padrao, nomes):
+        """Nome da ficha do arquivo padrão (ex.: "Pd Solo"); sem nome, o código do arquivo."""
+        return nome_da_amostra(nomes, resultado_padrao.nome) or resultado_padrao.nome
+
+    def _identificacao(self, resultado_padrao):
+        nome = self._nome_do_padrao(resultado_padrao, getattr(self, "nomes_atuais", None))
         identificacao = f"Padrão: {resultado_padrao.nome}"
+        if nome != resultado_padrao.nome:
+            identificacao = f"Padrão: {nome} · {resultado_padrao.nome}"
         if resultado_padrao.nome_certificado:
             identificacao += f" ({resultado_padrao.nome_certificado})"
         return identificacao
@@ -349,21 +413,31 @@ class ExportarModel:
         dfs = {nome: self._normalizar_valores_para_excel(df) for nome, df in dfs.items()}
 
         nome_padrao = nome_amostra(resultado_padrao.arquivo_padrao or "")
+        # estatísticas com os valores medidos, antes de um "< LD" tomar o lugar de algum deles
+        df_estatisticas = self.aba_resultados.montar_estatisticas(dfs["Resultados"], nome_padrao)
+        if self.menor_ld:
+            dfs["Resultados"] = self._aplicar_menor_ld(
+                dfs["Resultados"], resultado_padrao, elementos_ordenados, contagem_elementos
+            )
+            dfs["Concentrações"] = self.aba_concentracoes.montar(dfs["Resultados"])
 
         if "Concentrações" in abas:
             worksheet = self._aba(writer, abas["Concentrações"])
             df_concentracoes, tem_nome = self._inserir_nomes(dfs["Concentrações"], nomes)
             if not df_concentracoes.empty:
-                self.estilo.escrever(
-                    worksheet, 0, 0, [["Amostra", *df_concentracoes.columns]], self._linhas(df_concentracoes),
-                    colunas_rotulo=2 if tem_nome else 1,
+                destaques = self._destaques(
+                    resultado_padrao, list(df_concentracoes.index), elementos_ordenados, 2 if tem_nome else 1, 1
                 )
+                linhas = self.estilo.escrever(
+                    worksheet, 0, 0, [["Amostra", *df_concentracoes.columns]], self._linhas(df_concentracoes),
+                    colunas_rotulo=2 if tem_nome else 1, destaques=destaques,
+                )
+                self._legenda(worksheet, linhas, destaques)
 
         if "Resultados" in abas:
             worksheet = self._aba(writer, abas["Resultados"])
             if not dfs["Resultados"].empty:
                 # Média, desvio padrão e DPR (%) das amostras (sem o padrão), logo abaixo da última amostra
-                df_estatisticas = self.aba_resultados.montar_estatisticas(dfs["Resultados"], nome_padrao)
                 self._escrever_resultados(
                     worksheet, resultado_padrao, dfs["Resultados"], elementos_ordenados, contagem_elementos,
                     ["C", "Erro", "Erro (%)"], nomes, df_estatisticas,
@@ -423,6 +497,7 @@ class ExportarModel:
                     formatos_coluna[col + i] = "0.0"
 
         corpo = self._linhas(df)
+        destaques = self._destaques(resultado_padrao, list(df.index), elementos_ordenados, 2 if tem_nome else 1, largura)
         separar_antes = ()
         if df_estatisticas is not None and not df_estatisticas.empty:
             if tem_nome:
@@ -431,14 +506,16 @@ class ExportarModel:
             separar_antes = (len(corpo),)  # régua fina entre as amostras e a média
             corpo += self._linhas(df_estatisticas)
 
-        self.estilo.escrever(
+        linhas = self.estilo.escrever(
             worksheet, 0, 0, [topo, linha_ld, linha_sub], corpo,
             colunas_rotulo=2 if tem_nome else 1,
             mesclas=mesclas,
             linhas_valor=(1,),
             separar_antes=separar_antes,
             formatos_coluna=formatos_coluna,
+            destaques=destaques,
         )
+        self._legenda(worksheet, linhas, destaques)
 
     def mostrar_popup_sucesso(self, caminho_arquivo):
         popup = ctk.CTkToplevel()

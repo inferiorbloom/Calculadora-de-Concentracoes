@@ -16,7 +16,6 @@ def montar_titulo_coluna(elemento, energia, unidade, possui_duplicata):
 
     return elemento
 
-
 class AbaResultadosModel:
     """Monta o DataFrame usado na aba 'Resultados' (concentração, erro e erro relativo)."""
 
@@ -55,20 +54,10 @@ class AbaResultadosModel:
         if not analise:
             return pd.DataFrame(), [], Counter()
 
-        
-
         elementos_ordenados = sorted(
             elementos_encontrados,
             key=lambda x: (z_do_elemento(x[0]), x[1])
         )
-
-        #print(elementos_ordenados)
-        #print("__________________")
-        #print("Sorted:")
-        #print(sorted(elementos_encontrados))
-        #print("__________________")
-        #print("K encontrado:",
-      #[e for e in elementos_encontrados if e[0] == "K"])
 
         contagem_elementos = Counter(elemento for elemento, energia in elementos_ordenados)
 
@@ -114,17 +103,9 @@ class AbaResultadosModel:
             columns=pd.MultiIndex.from_tuples(colunas),
         )
 
-        #print("df_analise")
-        #print(df_analise)
-        #print("Debug Aba resultados")
-        #print(df_analise.loc[["060723ab","060723ac","060723ad"]])
-
         # Mantemos valores numéricos como float e deixamos a exportação decidir
         # a representação visual para células vazias com '-'.
         df_analise = df_analise.astype(object)
-
-        #print("\n========== DF_ANALISE ==========")
-        #print(df_analise.to_string())
 
         return df_analise, elementos_ordenados, contagem_elementos
 
@@ -154,4 +135,3 @@ class AbaResultadosModel:
             columns=df_analise.columns,
         )
         return df_estatisticas.astype(object)
-

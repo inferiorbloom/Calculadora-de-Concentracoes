@@ -15,6 +15,14 @@ GERAIS = {
     "exportar": ("Exportar", None, "excel.png"),
 }
 
+ATALHOS = (
+    "Ctrl+O  arquivos\n"
+    "F5  calcular\n"
+    "Ctrl+E  Excel   ·   Ctrl+G  gráficos\n"
+    "Ctrl+S  salvar análise\n"
+    "Ctrl+Shift+O  abrir análise"
+)
+
 COR_FUNDO = "#1d1e1e"
 COR_HOVER = "#262828"
 COR_SELECIONADA = "#2c3440"
@@ -85,12 +93,27 @@ class AbasLateraisView(ctk.CTkFrame):
     é onde cada aba vai ganhar a sua função.
     """
 
-    def __init__(self, master, ao_trocar=None, inicial="Ag"):
+    def __init__(self, master, ao_trocar=None, inicial="Ag", ao_abrir_analise=None, ao_salvar_analise=None):
         super().__init__(master, width=180, fg_color=COR_FUNDO, corner_radius=0)
         self.pack_propagate(False)
         self.ao_trocar = ao_trocar
         self.abas = {}
         self.selecionada = None
+
+        # embaixo: a análise inteira (todos os alvos) em um arquivo, e os atalhos de teclado
+        ctk.CTkLabel(
+            self, text=ATALHOS, font=("Segoe UI", 10), text_color=COR_APAGADA, justify="left", anchor="w",
+        ).pack(side="bottom", fill="x", padx=16, pady=(6, 14))
+        botoes = ctk.CTkFrame(self, fg_color="transparent")
+        botoes.pack(side="bottom", fill="x", padx=12)
+        for texto, comando in (("Salvar análise", ao_salvar_analise), ("Abrir análise", ao_abrir_analise)):
+            ctk.CTkButton(
+                botoes, text=texto, height=28, font=("Segoe UI", 12), fg_color="#2c3440", hover_color="#36404e",
+                command=comando,
+            ).pack(side="bottom", fill="x", pady=3)
+        ctk.CTkLabel(self, text="ANÁLISE", font=("Segoe UI", 10, "bold"), text_color=COR_APAGADA, anchor="w").pack(
+            side="bottom", fill="x", padx=16, pady=(0, 4)
+        )
 
         self._grupo("ALVOS", pady=(18, 6))
         for chave, (titulo, subtitulo, icone) in ALVOS.items():

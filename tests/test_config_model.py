@@ -47,6 +47,29 @@ class ConfigModelTests(unittest.TestCase):
 
         self.assertIsNone(configModel.carregar_ultimo_diretorio())
 
+    def test_tempo_de_contagem_fica_como_foi_digitado(self):
+        self.assertEqual(configModel.carregar_tempo_contagem(), "")
+        configModel.salvar_tempo_contagem("100,5")
+        self.assertEqual(configModel.carregar_tempo_contagem(), "100,5")
+
+    def test_certificado_lembrado_por_alvo_e_arquivo(self):
+        configModel.salvar_certificado("Ag", "290426ab.txt", "Mexilhão")
+        configModel.salvar_certificado("Au", "290426ab.txt", "Ipê")
+        self.assertEqual(configModel.carregar_certificados("Ag"), {"arquivos": {"290426ab.txt": "Mexilhão"}, "ultimo": "Mexilhão"})
+        self.assertEqual(configModel.carregar_certificados("Au")["arquivos"]["290426ab.txt"], "Ipê")
+        self.assertEqual(configModel.carregar_certificados("Rh"), {"arquivos": {}, "ultimo": None})
+
+    def test_menor_ld_desligado_por_padrao(self):
+        self.assertFalse(configModel.carregar_mostrar_menor_ld())
+        configModel.salvar_mostrar_menor_ld(True)
+        self.assertTrue(configModel.carregar_mostrar_menor_ld())
+
+    def test_formato_de_imagem(self):
+        self.assertEqual(configModel.carregar_formato_imagem(), "png")
+        configModel.salvar_formato_imagem("svg")
+        configModel.salvar_formato_imagem("bmp")  # inválido: ignorado
+        self.assertEqual(configModel.carregar_formato_imagem(), "svg")
+
 
 if __name__ == "__main__":
     unittest.main()

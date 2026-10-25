@@ -1,7 +1,12 @@
 from tkinter import filedialog, messagebox
 
 from models.comparacaoModel import ESTILOS, ComparacaoModel
-from models.configModel import carregar_estilo_comparacao, carregar_ultimo_diretorio, salvar_estilo_comparacao
+from models.configModel import (
+    carregar_estilo_comparacao,
+    carregar_formato_imagem,
+    carregar_ultimo_diretorio,
+    salvar_estilo_comparacao,
+)
 from views.comparacaoView import AnaliseEstatisticaView, ComparacaoJanela, CompararPadroesView
 
 
@@ -31,7 +36,7 @@ class _ComparacaoBase:
         )
         if not pasta:
             return
-        gravados = self.model.exportar(pasta, self.comparacao, self.estado["estilo"])
+        gravados = self.model.exportar(pasta, self.comparacao, self.estado["estilo"], carregar_formato_imagem())
         messagebox.showinfo("Gráficos exportados", f"{len(gravados)} imagens salvas em:\n{pasta}", parent=janela)
 
 

@@ -49,20 +49,8 @@ class LimiteDeteccaoModel:
 
     def calcular_limite_deteccao(self, arquivos_fullReport, arquivo_padrao, c_padrao, areas_normalizadas, concentracoes, area_padrao=None):
 
-      #  print("Será que os arquivos estão chegando corretamente?")
-      #  print(areas_normalizadas)
-       # print("=================================")
-
-       # print("Será que as concentrações estão chegando corretamente?")
-       # print(concentracoes)
-       # print("=================================")
-
         # reorganiza as concentrações
         concentracoes = self.reorganizar_concentracoes(concentracoes)
-
-        #print("Concentrações reorganizadas:")
-        #print(concentracoes)
-        #print("=================================")
 
         limites = {}
 
@@ -114,24 +102,8 @@ class LimiteDeteccaoModel:
 
                     ld = (conc_valor * limite_area) / area_norm_valor
                     ld_resultado[nome][elemento] = ld
-        #print("areas normalizadas:", areas_normalizadas)
-        #print("------------------------------")
-        #print("Concentrações:", concentracoes)
-        #print("------------------------------")
-        #print("Limites de detecção calculados:", ld_resultado)
-        #print("Backgrounds:", backgrounds)
-        #print("Backgrounds:", arquivos_fullReport)
-        #print("------------------------------")
-        #print("Limites de detecção área:", limites[arquivo])
-        #print(ld_resultado)
     
-        #print("\n=========== LD_RESULTADO ===========")
-        #for amostra, dados in ld_resultado.items():
-            #print(amostra, "->", dados)
-
-
         return ld_resultado
-
 
     def reorganizar_concentracoes(self, concentracoes):
 

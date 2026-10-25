@@ -13,6 +13,7 @@ from models.abaZScoreModel import AbaZScoreModel
 from models.leitorArquivoModel import nome_amostra
 from models.fichaInformacaoModel import nome_da_amostra
 from models.estiloTabelaModel import EstiloTabela
+from models.qualidadeModel import TEXTO_MENOR_LD, abaixo_do_ld, ld_de_referencia
 
 
 class ExportarModel:
@@ -29,6 +30,29 @@ class ExportarModel:
         self.aba_concentracoes = AbaConcentracoesModel()
         self.aba_sld = AbaSLDModel()
         self.aba_zscore = AbaZScoreModel()
+        # True: valores abaixo do LD saem como "< LD" (sem o erro) em Concentrações e Resultados.
+        # A média e o desvio das estatísticas continuam calculados com os valores medidos.
+        self.menor_ld = False
+
+    def _aplicar_menor_ld(self, df_analise, resultado_padrao, elementos_ordenados, contagem_elementos):
+        """Cópia do df_analise com "< LD" no C (e o erro vazio) das amostras abaixo do LD do elemento."""
+        if not self.menor_ld or df_analise is None or df_analise.empty or not resultado_padrao.resultado_limite:
+            return df_analise
+        df = df_analise.astype(object)  # "< LD" é texto: a coluna deixa de ser só número
+        unidades = resultado_padrao.unidade_padrao or {}
+        nome_padrao = nome_amostra(resultado_padrao.arquivo_padrao or "")
+        for elemento, energia in elementos_ordenados:
+            titulo = montar_titulo_coluna(elemento, energia, unidades.get(elemento, ""), contagem_elementos[elemento] > 1)
+            if (titulo, "C") not in df.columns:
+                continue
+            for amostra in df.index:
+                ld = ld_de_referencia(resultado_padrao.resultado_limite, amostra, elemento, nome_padrao)
+                if abaixo_do_ld(df.at[amostra, (titulo, "C")], ld):
+                    df.at[amostra, (titulo, "C")] = TEXTO_MENOR_LD
+                    for subcoluna in ("Erro", "Erro (%)"):
+                        if (titulo, subcoluna) in df.columns:
+                            df.at[amostra, (titulo, subcoluna)] = ""
+        return df
 
     def _normalizar_valores_para_excel(self, df):
         """Converte valores que parecem numéricos para tipos numéricos reais antes de gravar no Excel."""
@@ -91,16 +115,8 @@ class ExportarModel:
 
         nome_padrao_normalizado = nome_amostra(nome_padrao or "")
 
-        #print(f"\nBuscando {elemento}")
-        #print("nome_padrao =", nome_padrao_normalizado)
-
-        #print("dados desse padrão:")
-        #print(ld_resultado.get(nome_padrao_normalizado))
-
         valor_padrao = ld_resultado.get(nome_padrao_normalizado, {}).get(elemento, "")
 
-        #print("valor encontrado =", valor_padrao)
-        
         if valor_padrao not in ["", None]:
             return valor_padrao
 
@@ -200,6 +216,7 @@ class ExportarModel:
         if df.empty:
             return
 
+        df = self._aplicar_menor_ld(df, r, elementos_ordenados, contagem_elementos)
         df = self._normalizar_valores_para_excel(df.drop(columns="Erro (%)", level=1))
         self._escrever_resultados(worksheet, r, df, elementos_ordenados, contagem_elementos, ["C", "Erro"], nomes)
 
@@ -234,7 +251,6 @@ class ExportarModel:
 
         caminho_arquivo = self._gravar(_salvar_excel, caminho_arquivo, "amostras")
 
-        print("Exportacao concluida!")
         self.mostrar_popup_sucesso(caminho_arquivo)
 
     def montar_dataframes(self, arquivos, resultado_padrao):
@@ -349,6 +365,13 @@ class ExportarModel:
         dfs = {nome: self._normalizar_valores_para_excel(df) for nome, df in dfs.items()}
 
         nome_padrao = nome_amostra(resultado_padrao.arquivo_padrao or "")
+        # estatísticas com os valores medidos, antes de um "< LD" tomar o lugar de algum deles
+        df_estatisticas = self.aba_resultados.montar_estatisticas(dfs["Resultados"], nome_padrao)
+        if self.menor_ld:
+            dfs["Resultados"] = self._aplicar_menor_ld(
+                dfs["Resultados"], resultado_padrao, elementos_ordenados, contagem_elementos
+            )
+            dfs["Concentrações"] = self.aba_concentracoes.montar(dfs["Resultados"])
 
         if "Concentrações" in abas:
             worksheet = self._aba(writer, abas["Concentrações"])
@@ -363,7 +386,6 @@ class ExportarModel:
             worksheet = self._aba(writer, abas["Resultados"])
             if not dfs["Resultados"].empty:
                 # Média, desvio padrão e DPR (%) das amostras (sem o padrão), logo abaixo da última amostra
-                df_estatisticas = self.aba_resultados.montar_estatisticas(dfs["Resultados"], nome_padrao)
                 self._escrever_resultados(
                     worksheet, resultado_padrao, dfs["Resultados"], elementos_ordenados, contagem_elementos,
                     ["C", "Erro", "Erro (%)"], nomes, df_estatisticas,

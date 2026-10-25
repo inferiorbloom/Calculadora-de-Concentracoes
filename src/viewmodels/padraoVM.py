@@ -13,8 +13,7 @@ class PadraoVM:
         self.padrao_view = PadraoView(master, self.frame)
         self.padrao_model = PadraoModel()
 
-        self.variaveis = Variaveis(master)
-        self.variaveis.padroes
+        self.variaveis = Variaveis()
 
         self.gerenciar_padraovm = Gerenciar_PadraoVM(dynamic_frame, sidebar_frame, self.frame, self.padrao_view)
 

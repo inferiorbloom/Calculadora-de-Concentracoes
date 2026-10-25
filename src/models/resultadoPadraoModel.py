@@ -19,6 +19,7 @@ class ResultadoPadrao:
     resultado_limite: dict = field(default_factory=dict)
     z_score_resultado: dict = field(default_factory=dict)
     sensibilidade_resultado: dict = field(default_factory=dict)
+    tempo_contagem: str = ""  # usado na Sensibilidade (e no gráfico sensibilidade × Z)
     graficos_traco: dict = field(default_factory=dict)  # amostra -> elementos no traço escolhidos no slider
     # amostra -> {"majoritario": set, "traco": set}: elementos desmarcados na tabela avançada de cada gráfico
     graficos_excluidos: dict = field(default_factory=dict)

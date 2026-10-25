@@ -5,6 +5,7 @@ from PIL import Image
 from models.comparacaoModel import ESTILOS
 from models.graficosModel import TEMAS
 from resource_utils import resource_path
+from views.componentesView import SeletorFormato
 
 
 def _icone_graficos():
@@ -23,7 +24,7 @@ class CompararPadroesView(ctk.CTkFrame):
 
 
 class AnaliseEstatisticaView(ctk.CTkFrame):
-    """Aba lateral "Análise estatística": por enquanto, os gráficos comparando os alvos já calculados."""
+    """Aba lateral "Análise estatística": os gráficos comparando os alvos e a análise multivariada de um alvo."""
 
     def __init__(self, master, alvos):
         super().__init__(master, corner_radius=10)
@@ -57,6 +58,21 @@ class AnaliseEstatisticaView(ctk.CTkFrame):
             font=("Arial", 13), height=36,
         )
         self.botao.pack(fill="x")
+
+        ctk.CTkFrame(centro, height=1, fg_color="#333535").pack(fill="x", pady=24)
+        ctk.CTkLabel(centro, text="Análise multivariada", font=("Segoe UI", 22, "bold")).pack()
+        ctk.CTkLabel(
+            centro,
+            text="PCA (biplot), correlação entre elementos (ρp) e agrupamento das amostras (HCA)\n"
+                 "de um alvo já calculado, com as concentrações em log-razão centrada (clr).\n"
+                 "Basta um alvo calculado, com pelo menos 3 amostras e 3 elementos.",
+            font=("Segoe UI", 13), text_color="#898781", justify="center",
+        ).pack(pady=(10, 15))
+        self.botao_multivariada = ctk.CTkButton(
+            centro, text="PCA · correlação · HCA", state="disabled", image=_icone_graficos(), compound="left",
+            font=("Arial", 13), height=36,
+        )
+        self.botao_multivariada.pack(fill="x")
 
     def mostrar_status(self, alvo, texto, calculado):
         self.status[alvo].configure(text=texto, text_color="#f0efec" if calculado else "#898781")
@@ -123,6 +139,7 @@ class ComparacaoJanela(ctk.CTkToplevel):
             rodape, text="Exportar imagens", width=150, fg_color="#0D740F", command=lambda: ao_exportar(self),
             state="normal" if self.elementos else "disabled",
         ).pack(side="right")
+        SeletorFormato(rodape).pack(side="right", padx=(0, 8))
 
         self._desenhar()
 

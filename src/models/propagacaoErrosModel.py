@@ -1,13 +1,7 @@
 import math
-from store.variaveis import Variaveis
-
-
 
 
 class PropagacaoErrosModel:
-
-    def __init__(self):
-        self.variaveis = Variaveis()
 
     def calcular(self, concentracoes, areas_normalizadas, erros_normalizados, c_padrao, area_padrao, erro_padrao):
 
@@ -16,9 +10,7 @@ class PropagacaoErrosModel:
         c_p = {el: info['valor'] for el, info in c_padrao['elementos'].items()}
         e_p = {el: info['erro'] for el, info in c_padrao['elementos'].items()}
         unidade_padrao = {el: info['unidade'] for el, info in c_padrao['elementos'].items()}
-        #print(unidade_padrao)
    
-
         for conc, amostra_dict in concentracoes.items():
 
             erros_propagados[conc] = {}
@@ -57,5 +49,4 @@ class PropagacaoErrosModel:
                     erro = valor_conc * raiz
 
                     erros_propagados[conc][amostra][el] = erro
-        #print("Erros propagados:", erros_propagados)
         return erros_propagados, unidade_padrao

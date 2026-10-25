@@ -203,6 +203,15 @@ class CoresETiposTests(unittest.TestCase):
         # todo o traço desmarcado: só a imagem do majoritário
         self.assertEqual([os.path.basename(c) for c in gravados], ["a - majoritario.png"])
 
+    def test_exporta_em_svg_e_pdf(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            for formato in ("svg", "pdf"):
+                gravados = self.model.exportar(pasta, [(None, "a", VALORES, 2)], formato=formato)
+                self.assertEqual(
+                    [os.path.basename(c) for c in gravados], [f"a - majoritario.{formato}", f"a - traco.{formato}"]
+                )
+                self.assertTrue(all(os.path.getsize(c) > 0 for c in gravados))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -9,8 +9,7 @@ class Gerenciar_PadraoVM:
         # self.callback_voltar_inicio = callback_voltar_inicio
         self.frame = frame
 
-        self.variaveis = Variaveis(sidebar)
-        # self.variaveis.padroes
+        self.variaveis = Variaveis()
         self.gerenciar_view = Gerenciar_PadraoView(self.sidebar, frame, dynamic_frame, self.variaveis, padrao_view)
 
         self.gerenciar_frame = None

@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 block_cipher = None
 
@@ -15,6 +15,8 @@ hiddenimports = [
     'pdfplumber',
     'pypdfium2',
     'tkinter',
+    'scipy.cluster.hierarchy',  # HCA da análise multivariada
+    'tkinterdnd2',  # arrastar e soltar arquivos na lista
 ]
 
 hiddenimports += collect_submodules('customtkinter')
@@ -22,6 +24,7 @@ hiddenimports += collect_submodules('matplotlib')
 hiddenimports += collect_submodules('PIL')
 hiddenimports += collect_submodules('pdfplumber')
 hiddenimports += collect_submodules('pypdfium2')
+hiddenimports += collect_submodules('tkinterdnd2')
 
 
 a = Analysis(
@@ -34,6 +37,7 @@ a = Analysis(
         ('aquisicoes', 'aquisicoes'),
         ('reports', 'reports'),
         ('tabela-excel', 'tabela-excel'),
+        *collect_data_files('tkinterdnd2'),  # as bibliotecas do tkdnd (Tcl)
     ],
     hiddenimports=hiddenimports,
     hookspath=[],

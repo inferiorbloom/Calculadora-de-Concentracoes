@@ -3,7 +3,12 @@ from tkinter import filedialog, messagebox
 from views.graficosView import GraficosView, GraficosJanela
 from models.graficosModel import GraficosModel, TIPOS
 from models.coresElementosModel import carregar_cores
-from models.configModel import carregar_tipo_grafico, carregar_ultimo_diretorio, salvar_tipo_grafico
+from models.configModel import (
+    carregar_formato_imagem,
+    carregar_tipo_grafico,
+    carregar_ultimo_diretorio,
+    salvar_tipo_grafico,
+)
 
 
 class GraficosVM:
@@ -68,7 +73,8 @@ class GraficosVM:
                 itens.append((r.rotulo if varios else None, amostra, valores, n, r.nome, excluidos))
 
         gravados = self.graficos_model.exportar(
-            pasta, itens, self.estado["tipo"], self.estado["base"], self.variaveis.nomes_amostras
+            pasta, itens, self.estado["tipo"], self.estado["base"], self.variaveis.nomes_amostras,
+            carregar_formato_imagem(),
         )
         messagebox.showinfo(
             "Gráficos exportados",

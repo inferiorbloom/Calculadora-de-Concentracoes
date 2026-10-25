@@ -5,6 +5,7 @@ from PIL import Image
 from models.fichaInformacaoModel import nome_da_amostra
 from models.graficosModel import BASES, LIMITE_ERRO_AREA, TEMAS, TIPOS, UNIDADE_DA_BASE, GraficosModel
 from resource_utils import resource_path
+from views.componentesView import SeletorFormato
 
 # Configurações iniciais do customtkinter
 ctk.set_appearance_mode("dark")
@@ -215,6 +216,7 @@ class GraficosJanela(ctk.CTkToplevel):
         ctk.CTkButton(
             rodape, text="Exportar imagens", width=150, fg_color="#0D740F", command=lambda: ao_exportar(self),
         ).pack(side="right")
+        SeletorFormato(rodape).pack(side="right", padx=(0, 8))
         self.var_avancado = ctk.BooleanVar(master=self, value=estado.get("avancado", False))
         ctk.CTkCheckBox(
             rodape, text="Avançado (escolher os elementos dos gráficos)", variable=self.var_avancado,

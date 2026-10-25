@@ -5,6 +5,7 @@ CONFIG_FILE = os.path.join(os.path.expanduser("~"), ".cx_calculator_config.json"
 CHAVE_ULTIMO_DIRETORIO = "ultimo_diretorio"
 CHAVE_ABAS_EXPORTAR = "abas_exportar"
 CHAVE_TIPO_GRAFICO = "tipo_grafico"
+CHAVE_ESTILO_COMPARACAO = "estilo_comparacao"
 
 
 def _ler_config():
@@ -71,3 +72,12 @@ def carregar_tipo_grafico():
 
 def salvar_tipo_grafico(tipo):
     _gravar_config(**{CHAVE_TIPO_GRAFICO: tipo})
+
+
+def carregar_estilo_comparacao():
+    """Estilo dos gráficos comparativos escolhido da última vez (barras, linhas), ou None."""
+    return _ler_config().get(CHAVE_ESTILO_COMPARACAO)
+
+
+def salvar_estilo_comparacao(estilo):
+    _gravar_config(**{CHAVE_ESTILO_COMPARACAO: estilo})

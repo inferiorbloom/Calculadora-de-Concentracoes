@@ -13,6 +13,7 @@ from viewmodels.exportarVM import ExportarVM
 from viewmodels.fichaVM import FichaVM
 from viewmodels.padraoVM import PadraoVM
 from viewmodels.graficosVM import GraficosVM
+from viewmodels.comparacaoVM import CompararPadroesVM
 from viewmodels.limiteDeteccaoVM import LimiteDeteccaoVM
 from models.zscoreModel import ZScoreModel
 from models.sensibilidadeModel import SensibilidadeModel
@@ -88,6 +89,11 @@ class ConcentracaoVM:
 
         # Chama os Graficos
         self.graficos = GraficosVM(self.caixa_saidas, self.variaveis, alvo)  # o alvo do tubo fica fora dos gráficos
+
+        # Comparar padrões: os mesmos elementos calculados com cada padrão (precisa de 2 ou mais)
+        self.comparar_padroes = CompararPadroesVM(
+            self.caixa_saidas, alvo, lambda: list(self.resultados_por_padrao), lambda: self.variaveis.nomes_amostras
+        )
 
         # Chama os Limite
         self.limite_deteccao = LimiteDeteccaoVM(sidebar_frame, self.service, self.variaveis)
@@ -271,6 +277,7 @@ class ConcentracaoVM:
 
         self.export.habilita_exporta_excel()
         self.graficos.habilita_graficos()
+        self.comparar_padroes.habilita(len(resultados_por_padrao) > 1)
 
         self.resultados_view.mostrar_resultados(resultados_por_padrao)
         if self.ao_calcular:

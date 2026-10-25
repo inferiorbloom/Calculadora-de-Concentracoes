@@ -2,9 +2,10 @@ from tkinter import messagebox
 
 import customtkinter as ctk
 from service.logErros import mensagem_erro_inesperado
+from viewmodels.comparacaoVM import CompararAlvosVM
 from viewmodels.concentracaoVM import ConcentracaoVM
 from viewmodels.exportarVM import ExportarTodosVM
-from views.abasLateraisView import ALVOS, GERAIS, AbasLateraisView
+from views.abasLateraisView import ALVOS, AbasLateraisView
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
@@ -62,17 +63,6 @@ class TelaAlvo(ctk.CTkFrame):
         self.calculo_vm.botoes()
 
 
-class TelaEmBreve(ctk.CTkFrame):
-    """Abas que vão trabalhar com todos os alvos juntos (ainda sem função)."""
-
-    def __init__(self, master, titulo, texto):
-        super().__init__(master, corner_radius=10)
-        centro = ctk.CTkFrame(self, fg_color="transparent")
-        centro.place(relx=0.5, rely=0.45, anchor="center")
-        ctk.CTkLabel(centro, text=titulo, font=("Segoe UI", 22, "bold")).pack()
-        ctk.CTkLabel(centro, text=texto, font=("Segoe UI", 13), text_color="#898781", justify="center").pack(pady=10)
-
-
 class MainView(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -116,8 +106,8 @@ class MainView(ctk.CTk):
                 vm.ao_calcular = lambda n, c=chave: self.abas_laterais.definir_status(c, f"{n} amostras")
                 vm.ao_editar_padroes = self._repassar_padroes
             elif chave == "estatistica":
-                tela = TelaEmBreve(self.area, GERAIS[chave][0],
-                                   "Em breve: estatísticas com os resultados de Ag, Au e Rh juntos.")
+                self.comparar_alvos_vm = CompararAlvosVM(self.area, ALVOS, self._resultados_por_alvo, self._nomes_por_alvo)
+                tela = self.comparar_alvos_vm.view
             else:
                 self.exportar_vm = ExportarTodosVM(self.area, ALVOS, self._resultados_por_alvo, self._nomes_por_alvo)
                 tela = self.exportar_vm.view
@@ -132,6 +122,8 @@ class MainView(ctk.CTk):
             self.tela_atual.pack_forget()  # só esconde: arquivos e resultados da aba continuam lá
         if chave == "exportar":
             self.exportar_vm.atualizar()  # algum alvo pode ter sido calculado desde a última vez
+        elif chave == "estatistica":
+            self.comparar_alvos_vm.atualizar()
         tela.pack(fill="both", expand=True)
         self.tela_atual = tela
         self.title(f"{TITULO} · {chave}" if chave in ALVOS else TITULO)

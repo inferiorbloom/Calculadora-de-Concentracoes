@@ -30,7 +30,9 @@ class ComparacaoModelTests(unittest.TestCase):
         self.assertEqual(valores, {"Ca": (2000.0, 100.0)})  # Kα (maior área), em mg/kg; sem Ag (alvo) e Ar
 
     def test_entre_padroes_uma_serie_por_padrao(self):
-        r1 = _resultado("p1", "NIST", {"a": {("Fe", 6.4): 10.0}, "b": {("Fe", 6.4): 20.0}}, {"a": {}, "b": {}})
+        # p1 e p2 são as medidas dos próprios padrões: ficam fora do eixo X
+        r1 = _resultado("p1", "NIST", {"a": {("Fe", 6.4): 10.0}, "b": {("Fe", 6.4): 20.0}, "p2": {("Fe", 6.4): 1.0}},
+                        {"a": {}, "b": {}, "p2": {}})
         r2 = _resultado("p2", "BCR", {"a": {("Fe", 6.4): 12.0}, "b": {("Zn", 8.6): 5.0}}, {"a": {}, "b": {}})
         c = self.model.entre_padroes([r1, r2], "Ag", {"b": "Solo"})
         self.assertEqual(c.amostras, [("a", "a"), ("b", "Solo")])

@@ -7,6 +7,7 @@ from matplotlib.figure import Figure
 from models.elementosQuimicos import z_do_elemento
 from models.fichaInformacaoModel import codigo_amostra, nome_da_amostra
 from models.graficosModel import FATOR_PARA_MG_KG, FONTE, TEMAS
+from models.leitorArquivoModel import nome_amostra
 
 # Gráficos comparativos, por elemento: as amostras no eixo X e, em cada amostra, uma barra (ou um ponto)
 # por padrão (1ª situação, dentro de um alvo) ou por alvo (2ª situação). Barra de erro = erro propagado (1σ).
@@ -70,8 +71,15 @@ class ComparacaoModel:
         return {elemento: (valor, erro) for elemento, (_, valor, erro) in melhor.items() if valor > 0}
 
     @staticmethod
-    def _amostras(resultado_padrao):
-        return [nome for bloco in resultado_padrao.concentracoes.values() for nome in bloco]
+    def _amostras(resultado_padrao, padroes=()):
+        """Amostras na ordem da tabela, sem as medidas dos padrões (`padroes`: códigos dos arquivos padrão)."""
+        return [nome for bloco in resultado_padrao.concentracoes.values() for nome in bloco
+                if codigo_amostra(nome) not in padroes]
+
+    @staticmethod
+    def _padroes(resultados):
+        """Códigos dos arquivos padrão: ficam fora dos gráficos comparativos (só poluiriam o eixo X)."""
+        return {codigo_amostra(nome_amostra(r.arquivo_padrao)) for r in resultados}
 
     def entre_padroes(self, resultados_por_padrao, alvo=None, nomes=None):
         """1ª situação: os padrões de UM alvo, cada um uma série. As amostras são as mesmas (mesmo código)."""
@@ -79,9 +87,10 @@ class ComparacaoModel:
         comparacao = Comparacao(f"alvo {alvo}" if alvo else "entre padrões", "padroes")
         painel = Painel("")
         vistas = {}
+        padroes = self._padroes(resultados_por_padrao)
         for i, r in enumerate(resultados_por_padrao):
             serie = Serie(r.rotulo, CORES_PADROES[i % len(CORES_PADROES)])
-            for amostra in self._amostras(r):
+            for amostra in self._amostras(r, padroes):
                 if amostra not in vistas:
                     vistas[amostra] = nome_da_amostra(nomes, amostra) or amostra
                 serie.valores[amostra] = self.valores_com_erro(r, amostra, excluidos)
@@ -152,7 +161,7 @@ class ComparacaoModel:
         for alvo, resultados in resultados_por_alvo.items():
             lista = amostras_por_alvo.setdefault(alvo, [])
             for r in resultados:
-                lista += [a for a in self._amostras(r) if a not in lista]
+                lista += [a for a in self._amostras(r, self._padroes(resultados)) if a not in lista]
         chaves, rotulos, como = self._ligar_amostras(amostras_por_alvo, nomes_por_alvo)
 
         paineis = {}  # padrão certificado -> Painel
@@ -164,7 +173,7 @@ class ComparacaoModel:
                 if any(s.rotulo == alvo for s in painel.series):
                     continue  # o mesmo padrão certificado duas vezes no alvo: fica o primeiro
                 serie = Serie(alvo, CORES_ALVOS.get(alvo, COR_SEM_ALVO))
-                for amostra in self._amostras(r):
+                for amostra in self._amostras(r, self._padroes(resultados)):
                     chave = chaves[alvo][amostra]
                     vistas.setdefault(chave, rotulos[chave])
                     serie.valores[chave] = self.valores_com_erro(r, amostra, {alvo})
@@ -211,7 +220,8 @@ class ComparacaoModel:
             for x, (chave, _) in enumerate(amostras):
                 valor = serie.valores.get(chave, {}).get(elemento)
                 if valor:
-                    xs.append(x + (i - (n - 1) / 2) * (largura if estilo == "barras" else 0.1))
+                    # barras lado a lado; nas linhas, todos os pontos na vertical da amostra
+                    xs.append(x + (i - (n - 1) / 2) * largura if estilo == "barras" else x)
                     ys.append(valor[0] / divisor)
                     es.append(valor[1] / divisor)
             if not xs:

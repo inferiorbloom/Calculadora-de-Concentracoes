@@ -260,11 +260,13 @@ class ExportarModel:
         self._escrever_resultados(worksheet, r, df, elementos_ordenados, contagem_elementos, ["C", "Erro"], nomes)
 
     def exportar_para_excel(self, lista_arquivos, resultados_por_padrao, caminho_arquivo=None, abas_exportar=None,
-                            nomes_amostras=None):
+                            nomes_amostras=None, alvo=None):
         """
         resultados_por_padrao: lista de ResultadoPadrao; cada padrão vira o seu próprio conjunto de abas.
         abas_exportar: nomes de TODAS_ABAS a gravar; None grava todas.
-        nomes_amostras: {código: nome} da ficha de informação (coluna "Nome" em Concentrações e Resultados).
+        nomes_amostras: {código: nome} da ficha de informação (coluna "Nome" em Concentrações e Resultados,
+        e ao lado do código na aba "Dados").
+        alvo: "Ag", "Au" ou "Rh": na aba "Dados", cada amostra ganha a razão de linhas do alvo (ver abaDadosModel).
         """
         arquivos = lista_arquivos or []
         resultados_por_padrao = list(resultados_por_padrao or [])
@@ -279,7 +281,7 @@ class ExportarModel:
                 self.estilo = EstiloTabela(writer.book)
                 self.nomes_atuais = nomes_amostras  # nome da ficha do padrão nas abas e na identificação
                 if self.ABA_DADOS in abas_exportar:
-                    self._escrever_dados(writer, arquivos, resultados_por_padrao)
+                    self._escrever_dados(writer, arquivos, resultados_por_padrao, nomes_amostras, alvo)
                 if self.ABA_SLD in abas_exportar:
                     self._escrever_sld(writer, resultados_por_padrao)
                 if not abas_exportar & set(self.ABAS):
@@ -343,11 +345,12 @@ class ExportarModel:
             return valores
         return [[indice, *linha] for indice, linha in zip(df.index, valores)]
 
-    def _escrever_dados(self, writer, arquivos, resultados_por_padrao):
+    def _escrever_dados(self, writer, arquivos, resultados_por_padrao, nomes=None, alvo=None):
         """
         Aba "Dados" única: o bloco de cada padrão fica ao lado do anterior, separado por uma coluna vazia.
-        Com vários padrões, a primeira linha identifica o padrão de cada bloco. Cada amostra é uma tabela,
-        com o nome e o fator de normalização (pelo Ar) logo acima.
+        Com vários padrões, a primeira linha identifica o padrão de cada bloco. Cada amostra é uma tabela;
+        logo acima ficam o código, o nome da ficha (3 células mescladas), a razão de linhas do alvo
+        e o fator de normalização (pelo Ar).
         """
         worksheet = self._aba(writer, self.ABA_DADOS)
         varios_padroes = len(resultados_por_padrao) > 1
@@ -360,9 +363,17 @@ class ExportarModel:
                 self.estilo.escrever_celula(worksheet, 0, coluna, self._identificacao(r), negrito=True)
                 linha = 2
 
-            blocos = self.aba_dados.montar(arquivos, r.areas_normalizadas, r.erros_normalizados, r.fatores_normalizacao)
-            for nome, fator, picos in blocos:
+            blocos = self.aba_dados.montar(
+                arquivos, r.areas_normalizadas, r.erros_normalizados, r.fatores_normalizacao, alvo
+            )
+            for nome, fator, razao, picos in blocos:
                 self.estilo.escrever_celula(worksheet, linha, coluna, nome, negrito=True)
+                nome_ficha = nome_da_amostra(nomes, nome)
+                if nome_ficha:
+                    worksheet.merge_range(linha, coluna + 1, linha, coluna + 3, nome_ficha, self.estilo.formato())
+                if razao is not None:
+                    self.estilo.escrever_celula(worksheet, linha, coluna + 4, f"Razão {alvo}:")
+                    self.estilo.escrever_celula(worksheet, linha, coluna + 5, razao, num_format="0.000")
                 self.estilo.escrever_celula(worksheet, linha, coluna + len(cabecalho) - 2, "Normalização:")
                 self.estilo.escrever_celula(worksheet, linha, coluna + len(cabecalho) - 1, fator)
                 linha += 1

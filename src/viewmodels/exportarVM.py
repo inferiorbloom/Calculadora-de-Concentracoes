@@ -10,9 +10,13 @@ from models.configModel import (
 from tkinter import filedialog, messagebox
 
 class ExportarVM:
-    def __init__(self, master, variaveis, nome_planilha="amostras.xlsx", conferir=None):
-        """conferir(): chamado antes de exportar; False cancela (ex.: resultados desatualizados)."""
+    def __init__(self, master, variaveis, nome_planilha="amostras.xlsx", conferir=None, alvo=None):
+        """
+        conferir(): chamado antes de exportar; False cancela (ex.: resultados desatualizados).
+        alvo: "Ag", "Au" ou "Rh" (a razão de linhas na aba "Dados"); None sem aba de alvo.
+        """
         self.variaveis = variaveis
+        self.alvo = alvo
         self.conferir = conferir
         self.nome_planilha = nome_planilha  # sugestão de nome no "Salvar como" (ex.: amostras_Ag.xlsx)
 
@@ -72,6 +76,7 @@ class ExportarVM:
             caminho_arquivo,
             abas_exportar=self.abas_exportar,
             nomes_amostras=self.variaveis.nomes_amostras,
+            alvo=self.alvo,
         )
         return self.exporta_excel_var
 

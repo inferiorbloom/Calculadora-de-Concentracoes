@@ -160,9 +160,10 @@ class EstiloTabela:
                 n += 1
         return n
 
-    def escrever_celula(self, worksheet, linha, coluna, valor, negrito=False):
+    def escrever_celula(self, worksheet, linha, coluna, valor, negrito=False, num_format=None):
         """Célula solta (fora de tabela), centralizada e sem borda."""
-        self._celula(worksheet, linha, coluna, self._valor(valor, None), self.formato(negrito=negrito))
+        formato = self.formato(negrito=negrito, num_format=num_format)
+        self._celula(worksheet, linha, coluna, self._valor(valor, None), formato)
 
     def _ajustar_largura(self, worksheet, coluna, texto):
         chave = (worksheet.name, coluna)

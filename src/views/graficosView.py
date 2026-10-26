@@ -212,9 +212,10 @@ class GraficosJanela(ctk.CTkToplevel):
             rodape, text="Distribuir automaticamente (cerca de 5% no traço, em todas as amostras)",
             variable=self.var_automatico, command=self._trocar_automatico, font=tema.fonte(12),
         ).pack(side="left")
-        ctk.CTkButton(
+        self.botao_exportar = ctk.CTkButton(
             rodape, text="Exportar imagens", width=150, command=lambda: ao_exportar(self), **tema.BOTAO_PRINCIPAL,
-        ).pack(side="right")
+        )
+        self.botao_exportar.pack(side="right")
         SeletorFormato(rodape).pack(side="right", padx=(0, 8))
         self.var_avancado = ctk.BooleanVar(master=self, value=estado.get("avancado", False))
         ctk.CTkCheckBox(

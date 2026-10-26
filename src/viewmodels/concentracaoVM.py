@@ -120,7 +120,9 @@ class ConcentracaoVM:
 
         # Chama a Exportacao
         nome_planilha = f"amostras_{alvo}.xlsx" if alvo else "amostras.xlsx"
-        self.export = ExportarVM(self.caixa_saidas, self.variaveis, nome_planilha, conferir=self._confirmar_exportacao)
+        self.export = ExportarVM(
+            self.caixa_saidas, self.variaveis, nome_planilha, conferir=self._confirmar_exportacao, alvo=alvo
+        )
 
         # Chama os Graficos
         # o alvo do tubo fica fora dos gráficos

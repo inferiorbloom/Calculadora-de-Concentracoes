@@ -1,9 +1,10 @@
 import os
 import re
 
+import numpy as np
 from matplotlib.colors import to_rgb
 from matplotlib.figure import Figure
-from matplotlib.patches import FancyBboxPatch
+from matplotlib.patches import FancyBboxPatch, Polygon
 
 from models.coresElementosModel import carregar_cores, cor_do_elemento
 from models.elementosQuimicos import z_do_elemento
@@ -247,12 +248,26 @@ class GraficosModel:
 
     @staticmethod
     def _pizza_3d(ax, valores, cores, fundo):
-        """Pizza inclinada: o disco achatado e, embaixo, a lateral feita de cópias mais escuras."""
-        profundidade, camadas = 0.18, 16
-        laterais = [_escurecer(c) for c in cores]
-        for k in range(camadas, 0, -1):
-            ax.pie(valores, colors=laterais, startangle=90, counterclock=False,
-                   center=(0, -profundidade * k / camadas), wedgeprops={"edgecolor": "none"})
+        """
+        Pizza inclinada: o disco achatado e, embaixo, a lateral mais escura. Só a metade da frente
+        (ângulos entre 180° e 360°) mostra lateral: cada fatia ganha um polígono, a faixa entre o arco
+        da borda e o mesmo arco descido de `profundidade`.
+        """
+        profundidade = 0.18
+        total = float(sum(valores))
+        inicio = 90.0  # startangle=90, counterclock=False: as fatias andam no sentido horário
+        for valor, cor in zip(valores, cores):
+            fim = inicio - 360.0 * valor / total
+            # o trecho da fatia na metade da frente, em graus (a fatia pode cruzar 180°/360°)
+            for desloca in (0.0, -360.0):
+                a, b = max(fim, 180.0 + desloca), min(inicio, 360.0 + desloca)
+                if b - a <= 0:
+                    continue
+                angulos = np.radians(np.linspace(a, b, max(int(b - a), 2)))
+                x, y = np.cos(angulos), np.sin(angulos)
+                contorno = np.concatenate([np.column_stack([x, y]), np.column_stack([x, y - profundidade])[::-1]])
+                ax.add_patch(Polygon(contorno, closed=True, facecolor=_escurecer(cor), edgecolor="none"))
+            inicio = fim
         ax.pie(valores, colors=cores, startangle=90, counterclock=False,
                wedgeprops={"edgecolor": fundo, "linewidth": 1.5})
         ax.set_xlim(-1.08, 1.08)
@@ -423,7 +438,7 @@ class GraficosModel:
     def _nome_arquivo(texto):
         return re.sub(r'[\\/:*?"<>|]+', "_", str(texto)).strip() or "grafico"
 
-    def exportar(self, pasta, itens, tipo="anel", base="concentracao", nomes=None, formato="png"):
+    def exportar(self, pasta, itens, tipo="anel", base="concentracao", nomes=None, formato="png", progresso=None):
         """
         itens: [(subpasta ou None, amostra, valores, n_traco, padrão ou None, excluidos ou None)];
         excluidos como em criar_figuras (os dois últimos são opcionais).
@@ -431,11 +446,14 @@ class GraficosModel:
         formato: "png", "svg" ou "pdf" (a extensão acompanha).
         Com nome na ficha, o arquivo vira "<nome> (<código>)", para duas amostras de mesmo nome não se sobrescreverem.
         Com a área normalizada, os nomes ganham " - area" (para não sobrescrever os de concentração).
+        progresso(feitos, total): chamado depois de cada amostra (a exportação roda fora da janela).
         Devolve os caminhos.
         """
         sufixo = " - area" if base == "area" else ""
         gravados = []
-        for subpasta, amostra, valores, n_traco, *resto in itens:
+        for i, (subpasta, amostra, valores, n_traco, *resto) in enumerate(itens, start=1):
+            if progresso:
+                progresso(i - 1, len(itens))
             padrao = resto[0] if resto else None
             excluidos = resto[1] if len(resto) > 1 else None
             if not valores:

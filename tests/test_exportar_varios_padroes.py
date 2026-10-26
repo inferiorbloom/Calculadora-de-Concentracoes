@@ -194,6 +194,35 @@ class NomeDaFichaEDestaquesTests(unittest.TestCase):
             self.assertEqual(_abas_do_arquivo(caminho), ["Ag - Pd Solo", "Ag - 290426ak"])
             self.assertEqual(_textos_da_primeira_aba(caminho)[(0, 0)], "Padrão: Pd Solo · 290426ab (a) PS. Mexilhão)")
 
+    def test_dados_com_nome_da_ficha_e_razao_do_alvo(self):
+        nomes = {"290426ac": "R2"}
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, "saida.xlsx")
+            self.model.exportar_para_excel(
+                self.amostras, [self.padrao_1], caminho, abas_exportar=["Dados"], nomes_amostras=nomes, alvo="Ag",
+            )
+            dados = _textos_da_primeira_aba(caminho)
+            with zipfile.ZipFile(caminho) as xlsx:
+                planilha = xlsx.read("xl/worksheets/sheet1.xml").decode("utf-8")
+
+        self.assertEqual(dados[(0, 0)], "290426ac")
+        self.assertEqual(dados[(0, 1)], "R2")
+        self.assertIn('<mergeCell ref="B1:D1"/>', planilha)
+        self.assertEqual(dados[(0, 4)], "Razão Ag:")
+        self.assertEqual(dados[(0, 6)], "Normalização:")
+
+    def test_razao_das_linhas_de_cada_alvo(self):
+        from models.abaDadosModel import razao_do_alvo
+        from models.leitorArquivoModel import Pico
+
+        picos = [Pico(47, 2.984, 1000, 10), Pico(47, 22.103, 250, 5), Pico(45, 2.696, 300, 3), Pico(45, 20.167, 100, 2),
+                 Pico(79, 9.707, 900, 9), Pico(78, 9.434, 300, 3)]
+        self.assertAlmostEqual(razao_do_alvo(picos, "Ag"), 4.0)
+        self.assertAlmostEqual(razao_do_alvo(picos, "Rh"), 3.0)
+        self.assertAlmostEqual(razao_do_alvo(picos, "Au"), 3.0)
+        self.assertEqual(razao_do_alvo(picos[:1], "Ag"), "-")  # sem a linha K
+        self.assertEqual(razao_do_alvo(picos, "X"), "-")
+
     def test_destaques_seguem_a_regra_da_tabela(self):
         r = self.padrao_1
         amostra = "290426ac"

@@ -33,6 +33,9 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 ; fecha o programa, se estiver aberto, antes de substituir os arquivos
 CloseApplications=yes
+; avisa o Windows no fim da instalação que os ícones mudaram: o .exe fica no mesmo caminho a cada versão
+; e, sem isso, o Windows continua mostrando o ícone guardado em cache (o da versão anterior)
+ChangesAssociations=yes
 OutputDir=instalador
 OutputBaseFilename=CX Setup V{#MyAppVersion}
 Compression=lzma2

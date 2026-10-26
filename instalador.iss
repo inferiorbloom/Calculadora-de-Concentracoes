@@ -9,7 +9,7 @@
 ; atualizar ou desinstalar não mexe neles.
 
 #define MyAppName "CX Rays"
-#define MyAppVersion "1.4"
+#define MyAppVersion "1.5"
 #define MyAppPublisher "Cloud Physics"
 #define MyAppExeName "CalculadoraConcentracoes.exe"
 #define PastaBuild "dist\CalculadoraConcentracoes"
@@ -62,7 +62,7 @@ Type: files; Name: "{userdesktop}\{#MyAppName}*.lnk"
 Source: "{#PastaBuild}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-; o atalho leva a versão no nome ("CX Rays 1.4"); os das versões anteriores são apagados em [InstallDelete]
+; o atalho leva a versão no nome ("CX Rays 1.5"); os das versões anteriores são apagados em [InstallDelete]
 Name: "{autoprograms}\{#MyAppName} {#MyAppVersion}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName} {#MyAppVersion}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
